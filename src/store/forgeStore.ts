@@ -44,42 +44,9 @@ export type ForgeEdge = Edge;
 // INITIAL DATA (Genius Touch)
 // ═══════════════════════════════════════════════════════════════
 
-const initialNodes: ForgeNode[] = [
-    {
-        id: 'node-datasource-1',
-        type: 'default',
-        position: { x: 100, y: 150 },
-        data: {
-            label: '📊 BTCUSDT',
-            type: 'dataSource',
-            config: {
-                symbol: 'BTCUSDT',
-                interval: '1h',
-            },
-        },
-    },
-    {
-        id: 'node-output-1',
-        type: 'default',
-        position: { x: 450, y: 150 },
-        data: {
-            label: '🚀 Signal Output',
-            type: 'output',
-            config: {
-                signalType: 'alert',
-            },
-        },
-    },
-];
-
-const initialEdges: ForgeEdge[] = [
-    {
-        id: 'edge-1',
-        source: 'node-datasource-1',
-        target: 'node-output-1',
-        animated: true,
-    },
-];
+// Clean canvas - no default mock nodes
+const initialNodes: ForgeNode[] = [];
+const initialEdges: ForgeEdge[] = [];
 
 // ═══════════════════════════════════════════════════════════════
 // STORE INTERFACE

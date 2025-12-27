@@ -71,13 +71,22 @@ const colorClasses: Record<string, { bg: string; border: string; text: string; h
 export default function NodePalette() {
     const addNode = useForgeStore((state) => state.addNode);
 
+    // Click handler - add node at random position
     const handleAddNode = useCallback((nodeConfig: NodeTypeConfig) => {
-        // Calculate a random position near center
         const x = 200 + Math.random() * 200;
         const y = 100 + Math.random() * 200;
-
         addNode(nodeConfig.type, { x, y }, nodeConfig.label);
     }, [addNode]);
+
+    // Drag handler - store node data for drop
+    const handleDragStart = useCallback((event: React.DragEvent, nodeConfig: NodeTypeConfig) => {
+        event.dataTransfer.setData('application/nebulaforge-node', JSON.stringify({
+            type: nodeConfig.type,
+            nodeType: nodeConfig.nodeType,
+            label: nodeConfig.label,
+        }));
+        event.dataTransfer.effectAllowed = 'move';
+    }, []);
 
     return (
         <div className="w-48 h-full bg-slate-900/95 border-r border-slate-700 flex flex-col">
@@ -94,14 +103,16 @@ export default function NodePalette() {
                     const colors = colorClasses[nodeConfig.color];
 
                     return (
-                        <button
+                        <div
                             key={nodeConfig.type}
+                            draggable
                             onClick={() => handleAddNode(nodeConfig)}
+                            onDragStart={(e) => handleDragStart(e, nodeConfig)}
                             className={`
-                w-full p-3 rounded-lg border transition-all duration-200 text-left
-                ${colors.bg} ${colors.border} ${colors.hover}
-                cursor-pointer group
-              `}
+                                w-full p-3 rounded-lg border transition-all duration-200 text-left
+                                ${colors.bg} ${colors.border} ${colors.hover}
+                                cursor-grab active:cursor-grabbing group
+                            `}
                         >
                             <div className="flex items-center gap-2 mb-1">
                                 <span className={colors.text}>{nodeConfig.icon}</span>
@@ -112,7 +123,7 @@ export default function NodePalette() {
                             <p className="text-xs text-slate-500 group-hover:text-slate-400">
                                 {nodeConfig.description}
                             </p>
-                        </button>
+                        </div>
                     );
                 })}
             </div>
@@ -120,7 +131,7 @@ export default function NodePalette() {
             {/* Footer hint */}
             <div className="px-3 py-2 border-t border-slate-800">
                 <p className="text-[10px] text-slate-600 text-center">
-                    Click to add node
+                    Click or drag to add
                 </p>
             </div>
         </div>

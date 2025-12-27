@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import {
     ReactFlow,
     Background,
@@ -8,10 +8,12 @@ import {
     MiniMap,
     BackgroundVariant,
     type ColorMode,
+    useReactFlow,
+    ReactFlowProvider,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { useForgeStore } from '@/store';
+import { useForgeStore, type ForgeNodeType } from '@/store';
 import { nodeTypes } from './Nodes';
 
 /**
@@ -19,17 +21,22 @@ import { nodeTypes } from './Nodes';
  * 
  * Ana strateji düzenleme alanı
  * React Flow tabanlı görsel node editörü
+ * Supports both click-to-add and drag-and-drop
  */
 
 const colorMode: ColorMode = 'dark';
 
-export default function ForgeEditor() {
+function ForgeEditorInner() {
+    const reactFlowWrapper = useRef<HTMLDivElement>(null);
+    const { screenToFlowPosition } = useReactFlow();
+
     const {
         nodes,
         edges,
         onNodesChange,
         onEdgesChange,
-        onConnect
+        onConnect,
+        addNode
     } = useForgeStore();
 
     const onNodeClick = useCallback((_: React.MouseEvent, node: { id: string }) => {
@@ -40,8 +47,39 @@ export default function ForgeEditor() {
         useForgeStore.getState().setActiveNode(null);
     }, []);
 
+    // Drag-and-drop handlers
+    const onDragOver = useCallback((event: React.DragEvent) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+    }, []);
+
+    const onDrop = useCallback((event: React.DragEvent) => {
+        event.preventDefault();
+
+        const nodeData = event.dataTransfer.getData('application/nebulaforge-node');
+        if (!nodeData) return;
+
+        try {
+            const { type, label } = JSON.parse(nodeData) as {
+                type: ForgeNodeType;
+                nodeType: string;
+                label: string;
+            };
+
+            // Calculate drop position in flow coordinates
+            const position = screenToFlowPosition({
+                x: event.clientX,
+                y: event.clientY,
+            });
+
+            addNode(type, position, label);
+        } catch (error) {
+            console.error('Failed to parse dropped node data:', error);
+        }
+    }, [screenToFlowPosition, addNode]);
+
     return (
-        <div className="h-full w-full">
+        <div ref={reactFlowWrapper} className="h-full w-full">
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -50,6 +88,8 @@ export default function ForgeEditor() {
                 onConnect={onConnect}
                 onNodeClick={onNodeClick}
                 onPaneClick={onPaneClick}
+                onDragOver={onDragOver}
+                onDrop={onDrop}
                 nodeTypes={nodeTypes}
                 colorMode={colorMode}
                 fitView
@@ -86,3 +126,13 @@ export default function ForgeEditor() {
         </div>
     );
 }
+
+// Wrapper component with ReactFlowProvider
+export default function ForgeEditor() {
+    return (
+        <ReactFlowProvider>
+            <ForgeEditorInner />
+        </ReactFlowProvider>
+    );
+}
+
