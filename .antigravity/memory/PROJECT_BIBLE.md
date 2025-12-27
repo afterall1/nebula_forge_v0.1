@@ -60,13 +60,36 @@ Görsel programlama (Node-Based) ile çalışan, **kod yazmadan** backtest ve ma
 
 ---
 
-## 5. Core Capabilities (Planned)
+## 5. Core Capabilities 
 
-1. **Visual Node Editor** - Drag & drop strategy builder
-2. **Backtest Engine** - Historical data simulation
-3. **Manipulation Detection** - Pattern recognition nodes
-4. **Real-time Data Feed** - Live connection to Liquidity Nebula
+- 1. **Visual Node Editor** - Drag & drop strategy builder
+- 2. **Backtest Engine** - Historical data simulation
+- 3. **Manipulation Detection** - Pattern recognition nodes
+- 4. **Real-time Data Feed** - Live connection to Liquidity Nebula
++ 1. ✅ **Visual Node Editor** - React Flow with custom nodes
++ 2. ✅ **Backtest Engine** - runSimulation() with NodeRegistry
++ 3. ⏳ **Manipulation Detection** - Pattern recognition (PLANNED)
++ 4. ⏳ **Real-time Data Feed** - Mock data fallback implemented
 
 ---
+
+## 6. File Structure
+
+src/ ├── app/ │ ├── page.tsx # Main layout (Palette | Editor | Simulation) │ └── api/system/validate/ # Health check API ├── components/ │ ├── Workbench/ │ │ ├── ForgeEditor.tsx # React Flow canvas │ │ ├── NodePalette.tsx # Node creation toolbar │ │ └── Nodes/ # Custom node components │ └── Simulation/ │ ├── SimulationPanel.tsx # Backtest runner UI │ └── TimelineCanvas.tsx # PixiJS chart ├── lib/ │ ├── engine/ │ │ ├── BacktestEngine.ts # Core simulation logic │ │ └── NodeRegistry.ts # Node type evaluators │ ├── testing/ # Mock data & test runner │ └── api/nexusClient.ts # Liquidity Nebula client └── store/ └── forgeStore.ts # Zustand state management
+
+---
+
+## 7. API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/system/validate` | GET | System health check, runs test scenarios |
+
+---
+
+## 8. GitHub
+
+- **Repository:** https://github.com/afterall1/nebula_forge_v0.1
+- **Branch:** master
 
 *Bu dosya projenin anayasasıdır. Değişiklikler governance protokolüne tabidir.*
