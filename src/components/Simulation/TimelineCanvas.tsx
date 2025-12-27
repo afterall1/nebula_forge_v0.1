@@ -9,6 +9,7 @@ import type { TradeSignal } from '@/lib/types/backtest';
  * TIMELINE CANVAS
  * 
  * PixiJS ile mum grafiği ve sinyal görselleştirmesi
+ * Enhanced trade visualization with BUY/SELL/EXIT markers
  */
 
 interface TimelineCanvasProps {
@@ -26,8 +27,12 @@ const COLORS = {
     bearish: 0xef4444,
     buySignal: 0x22c55e,
     sellSignal: 0xef4444,
+    exitSignal: 0xfbbf24,  // Amber/Yellow for exit
     text: 0x94a3b8,
 };
+
+// Signal type extension (for EXIT support)
+type ExtendedSignalType = 'BUY' | 'SELL' | 'EXIT';
 
 export default function TimelineCanvas({
     marketData,
@@ -37,6 +42,135 @@ export default function TimelineCanvas({
 }: TimelineCanvasProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const appRef = useRef<Application | null>(null);
+
+    /**
+     * Draw trade markers on the chart
+     * - BUY: Green up triangle below candle
+     * - SELL: Red down triangle above candle
+     * - EXIT: Yellow X marker at price level
+     */
+    const drawTrades = useCallback((
+        container: Container,
+        signalMap: Map<number, TradeSignal>,
+        marketData: UnifiedMarketData[],
+        priceToY: (price: number) => number,
+        padding: { left: number },
+        candleSpacing: number
+    ) => {
+        // Clear existing trade markers
+        container.removeChildren();
+
+        for (let i = 0; i < marketData.length; i++) {
+            const candle = marketData[i];
+            const signal = signalMap.get(candle.timestamp);
+
+            if (!signal) continue;
+
+            const x = padding.left + i * candleSpacing + candleSpacing / 2;
+            const signalType = signal.type as ExtendedSignalType;
+
+            // Create marker graphics
+            const marker = new Graphics();
+
+            // Calculate positions
+            const highY = priceToY(candle.high);
+            const lowY = priceToY(candle.low);
+            const priceY = priceToY(signal.price);
+
+            switch (signalType) {
+                case 'BUY':
+                    drawBuyMarker(marker, x, lowY + 12, COLORS.buySignal);
+                    break;
+
+                case 'SELL':
+                    drawSellMarker(marker, x, highY - 12, COLORS.sellSignal);
+                    break;
+
+                case 'EXIT':
+                    drawExitMarker(marker, x, priceY, COLORS.exitSignal);
+                    break;
+            }
+
+            container.addChild(marker);
+        }
+    }, []);
+
+    /**
+     * Draw BUY marker - Green up triangle
+     */
+    const drawBuyMarker = (graphics: Graphics, x: number, y: number, color: number) => {
+        const size = 8;
+
+        // Glow effect
+        graphics.circle(x, y - size / 2, size * 1.2);
+        graphics.fill({ color, alpha: 0.2 });
+
+        // Triangle pointing up
+        graphics.moveTo(x, y - size);
+        graphics.lineTo(x - size * 0.7, y);
+        graphics.lineTo(x + size * 0.7, y);
+        graphics.closePath();
+        graphics.fill({ color });
+
+        // Border
+        graphics.setStrokeStyle({ width: 1, color: 0xffffff, alpha: 0.5 });
+        graphics.moveTo(x, y - size);
+        graphics.lineTo(x - size * 0.7, y);
+        graphics.lineTo(x + size * 0.7, y);
+        graphics.closePath();
+        graphics.stroke();
+    };
+
+    /**
+     * Draw SELL marker - Red down triangle
+     */
+    const drawSellMarker = (graphics: Graphics, x: number, y: number, color: number) => {
+        const size = 8;
+
+        // Glow effect
+        graphics.circle(x, y + size / 2, size * 1.2);
+        graphics.fill({ color, alpha: 0.2 });
+
+        // Triangle pointing down
+        graphics.moveTo(x, y + size);
+        graphics.lineTo(x - size * 0.7, y);
+        graphics.lineTo(x + size * 0.7, y);
+        graphics.closePath();
+        graphics.fill({ color });
+
+        // Border
+        graphics.setStrokeStyle({ width: 1, color: 0xffffff, alpha: 0.5 });
+        graphics.moveTo(x, y + size);
+        graphics.lineTo(x - size * 0.7, y);
+        graphics.lineTo(x + size * 0.7, y);
+        graphics.closePath();
+        graphics.stroke();
+    };
+
+    /**
+     * Draw EXIT marker - Yellow X
+     */
+    const drawExitMarker = (graphics: Graphics, x: number, y: number, color: number) => {
+        const size = 6;
+
+        // Glow effect
+        graphics.circle(x, y, size * 1.5);
+        graphics.fill({ color, alpha: 0.2 });
+
+        // X shape
+        graphics.setStrokeStyle({ width: 2, color });
+        graphics.moveTo(x - size, y - size);
+        graphics.lineTo(x + size, y + size);
+        graphics.stroke();
+
+        graphics.moveTo(x + size, y - size);
+        graphics.lineTo(x - size, y + size);
+        graphics.stroke();
+
+        // Center dot
+        graphics.circle(x, y, 2);
+        graphics.fill({ color });
+    };
 
     const renderChart = useCallback(async () => {
         if (!containerRef.current || marketData.length === 0) return;
@@ -64,9 +198,9 @@ export default function TimelineCanvas({
 
         // Create containers
         const chartContainer = new Container();
-        const signalContainer = new Container();
+        const tradesContainer = new Container();
         app.stage.addChild(chartContainer);
-        app.stage.addChild(signalContainer);
+        app.stage.addChild(tradesContainer);
 
         // Calculate price range
         const prices = marketData.flatMap(d => [d.high, d.low]);
@@ -83,6 +217,10 @@ export default function TimelineCanvas({
         const candleCount = marketData.length;
         const candleWidth = Math.max(2, Math.min(12, chartWidth / candleCount - 1));
         const candleSpacing = chartWidth / candleCount;
+
+        // Price to Y coordinate function
+        const priceToY = (price: number) =>
+            padding.top + ((maxPrice - price) / priceRange) * chartHeight;
 
         // Draw grid lines
         const gridGraphics = new Graphics();
@@ -111,7 +249,7 @@ export default function TimelineCanvas({
         }
         chartContainer.addChild(gridGraphics);
 
-        // Create signal lookup
+        // Create signal lookup map
         const signalMap = new Map<number, TradeSignal>();
         for (const signal of signals) {
             signalMap.set(signal.timestamp, signal);
@@ -123,10 +261,6 @@ export default function TimelineCanvas({
         for (let i = 0; i < marketData.length; i++) {
             const candle = marketData[i];
             const x = padding.left + i * candleSpacing + candleSpacing / 2;
-
-            // Price to Y coordinate
-            const priceToY = (price: number) =>
-                padding.top + ((maxPrice - price) / priceRange) * chartHeight;
 
             const openY = priceToY(candle.open);
             const closeY = priceToY(candle.close);
@@ -153,37 +287,14 @@ export default function TimelineCanvas({
                 bodyHeight
             );
             candleGraphics.fill({ color });
-
-            // Draw signal if exists
-            const signal = signalMap.get(candle.timestamp);
-            if (signal) {
-                const signalGraphics = new Graphics();
-                const signalY = signal.type === 'BUY' ? lowY + 15 : highY - 15;
-                const signalColor = signal.type === 'BUY' ? COLORS.buySignal : COLORS.sellSignal;
-
-                // Draw arrow
-                if (signal.type === 'BUY') {
-                    // Up arrow
-                    signalGraphics.moveTo(x, signalY - 10);
-                    signalGraphics.lineTo(x - 6, signalY);
-                    signalGraphics.lineTo(x + 6, signalY);
-                    signalGraphics.closePath();
-                    signalGraphics.fill({ color: signalColor });
-                } else {
-                    // Down arrow
-                    signalGraphics.moveTo(x, signalY + 10);
-                    signalGraphics.lineTo(x - 6, signalY);
-                    signalGraphics.lineTo(x + 6, signalY);
-                    signalGraphics.closePath();
-                    signalGraphics.fill({ color: signalColor });
-                }
-
-                signalContainer.addChild(signalGraphics);
-            }
         }
 
         chartContainer.addChild(candleGraphics);
-    }, [marketData, signals, width, height]);
+
+        // Draw trade signals using dedicated function
+        drawTrades(tradesContainer, signalMap, marketData, priceToY, padding, candleSpacing);
+
+    }, [marketData, signals, width, height, drawTrades]);
 
     useEffect(() => {
         renderChart();
@@ -204,3 +315,4 @@ export default function TimelineCanvas({
         />
     );
 }
+

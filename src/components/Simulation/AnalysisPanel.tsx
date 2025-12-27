@@ -1,17 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, Terminal, Brain, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { X, Terminal, Brain, AlertTriangle, CheckCircle, XCircle, TrendingUp, TrendingDown, Activity, Target, AlertCircle, BarChart3 } from 'lucide-react';
 import { useForgeStore } from '@/store';
+import type { BacktestMetrics } from '@/lib/types/backtest';
 
 /**
  * ANALYSIS PANEL
  * 
  * Bloomberg Terminal-style AI analysis report viewer
  * Design: Black background, monospaced font, green/red highlights
+ * 
+ * Now includes Cortex Metrics Grid:
+ * - Total Return, Win Rate, Sharpe Ratio, SQN, Max Drawdown, Profit Factor
  */
 
-export default function AnalysisPanel() {
+// Props interface for optional metrics
+interface AnalysisPanelProps {
+    metrics?: BacktestMetrics | null;
+}
+
+export default function AnalysisPanel({ metrics }: AnalysisPanelProps = {}) {
     const { analysisReport, setAnalysisReport } = useForgeStore();
     const [isVisible, setIsVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -76,9 +85,15 @@ export default function AnalysisPanel() {
             <div className="flex-1 overflow-y-auto p-4 font-mono text-xs">
                 {isLoading ? (
                     <LoadingState />
-                ) : analysisReport ? (
-                    <ReportRenderer content={analysisReport} />
-                ) : null}
+                ) : (
+                    <>
+                        {/* Metrics Grid - Display if metrics available */}
+                        {metrics && <MetricsGrid metrics={metrics} />}
+
+                        {/* Text Report */}
+                        {analysisReport && <ReportRenderer content={analysisReport} />}
+                    </>
+                )}
             </div>
 
             {/* Footer */}
@@ -93,6 +108,148 @@ export default function AnalysisPanel() {
             </div>
         </div>
     );
+}
+
+/**
+ * METRICS GRID
+ * 
+ * Cortex metrics displayed as styled cards
+ * Color-coded: Green for positive, Red for negative, Amber for warning
+ */
+function MetricsGrid({ metrics }: { metrics: BacktestMetrics }) {
+    const {
+        totalReturn = 0,
+        winRate = 0,
+        sharpeRatio = 0,
+        sqn = 0,
+        maxDrawdown = 0,
+        profitFactor = 0,
+        tradeCount = 0,
+    } = metrics;
+
+    return (
+        <div className="mb-4 pb-4 border-b border-emerald-900/30">
+            <h3 className="text-emerald-500 text-[10px] uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Activity className="w-3 h-3" />
+                Performance Metrics
+            </h3>
+
+            <div className="grid grid-cols-2 gap-2">
+                {/* Total Return */}
+                <MetricCard
+                    label="Total Return"
+                    value={`${totalReturn >= 0 ? '+' : ''}${totalReturn.toFixed(2)}%`}
+                    icon={totalReturn >= 0 ? TrendingUp : TrendingDown}
+                    color={totalReturn >= 0 ? 'emerald' : 'red'}
+                />
+
+                {/* Win Rate */}
+                <MetricCard
+                    label="Win Rate"
+                    value={`${(winRate * 100).toFixed(1)}%`}
+                    icon={Target}
+                    color={winRate >= 0.5 ? 'emerald' : winRate >= 0.4 ? 'amber' : 'red'}
+                />
+
+                {/* Sharpe Ratio */}
+                <MetricCard
+                    label="Sharpe Ratio"
+                    value={sharpeRatio.toFixed(2)}
+                    icon={BarChart3}
+                    color={sharpeRatio >= 2 ? 'emerald' : sharpeRatio >= 1 ? 'amber' : 'red'}
+                    tooltip="Risk-adjusted return"
+                />
+
+                {/* SQN */}
+                <MetricCard
+                    label="SQN"
+                    value={sqn.toFixed(2)}
+                    icon={Brain}
+                    color={getSQNColor(sqn)}
+                    tooltip={getSQNGrade(sqn)}
+                />
+
+                {/* Max Drawdown */}
+                <MetricCard
+                    label="Max Drawdown"
+                    value={`-${Math.abs(maxDrawdown).toFixed(2)}%`}
+                    icon={AlertCircle}
+                    color={maxDrawdown <= 10 ? 'emerald' : maxDrawdown <= 20 ? 'amber' : 'red'}
+                />
+
+                {/* Profit Factor */}
+                <MetricCard
+                    label="Profit Factor"
+                    value={profitFactor.toFixed(2)}
+                    icon={TrendingUp}
+                    color={profitFactor >= 2 ? 'emerald' : profitFactor >= 1.5 ? 'amber' : 'red'}
+                />
+            </div>
+
+            {/* Trade Count */}
+            <div className="mt-2 text-center text-[10px] text-slate-500">
+                Based on <span className="text-emerald-400">{tradeCount}</span> trades
+            </div>
+        </div>
+    );
+}
+
+/**
+ * Single Metric Card Component
+ */
+function MetricCard({
+    label,
+    value,
+    icon: Icon,
+    color,
+    tooltip,
+}: {
+    label: string;
+    value: string;
+    icon: React.ElementType;
+    color: 'emerald' | 'amber' | 'red';
+    tooltip?: string;
+}) {
+    const colorClasses = {
+        emerald: 'border-emerald-900/50 bg-emerald-950/30 text-emerald-400',
+        amber: 'border-amber-900/50 bg-amber-950/30 text-amber-400',
+        red: 'border-red-900/50 bg-red-950/30 text-red-400',
+    };
+
+    return (
+        <div
+            className={`p-2 rounded border ${colorClasses[color]} transition-all hover:brightness-110`}
+            title={tooltip}
+        >
+            <div className="flex items-center gap-1 mb-1">
+                <Icon className="w-3 h-3 opacity-70" />
+                <span className="text-[9px] uppercase tracking-wider text-slate-500">
+                    {label}
+                </span>
+            </div>
+            <div className="text-sm font-bold">{value}</div>
+        </div>
+    );
+}
+
+/**
+ * SQN Color Helper (Van Tharp Scale)
+ */
+function getSQNColor(sqn: number): 'emerald' | 'amber' | 'red' {
+    if (sqn >= 2.5) return 'emerald';
+    if (sqn >= 1.6) return 'amber';
+    return 'red';
+}
+
+/**
+ * SQN Grade Helper (Van Tharp Scale)
+ */
+function getSQNGrade(sqn: number): string {
+    if (sqn >= 3.0) return 'Superb System';
+    if (sqn >= 2.5) return 'Excellent System';
+    if (sqn >= 2.0) return 'Good System';
+    if (sqn >= 1.6) return 'Average System';
+    return 'Poor System';
 }
 
 /**
@@ -268,8 +425,8 @@ function HighlightedText({ text }: { text: string }) {
                         <span
                             key={i}
                             className={`font-bold ${isPositive ? 'text-emerald-400' :
-                                    isNegative ? 'text-red-400' :
-                                        'text-white'
+                                isNegative ? 'text-red-400' :
+                                    'text-white'
                                 }`}
                         >
                             {inner}
