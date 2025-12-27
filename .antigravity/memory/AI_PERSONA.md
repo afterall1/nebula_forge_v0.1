@@ -155,6 +155,23 @@ Her cevabında aşağıdaki uzmanlıkların sentezini kullanmalısın:
 ⛔ Tech stack'i değiştirme
 ```
 
+## 6. SESSION CONTINUITY PROTOCOL
+
+Yeni oturum başlatıldığında:
+
+1. **Memory Okuma Sırası:**
+
+00_GOVERNANCE.md → PROJECT_BIBLE.md → TECH_STACK_LOCK.md → AI_PERSONA.md → updates/[son_tarih].md
+
+
+2. **Hash Doğrulama:**
+- [CONTEXT_HASH.md](cci:7://file:///c:/Users/PC15/Desktop/Projelerim/Nebula%20Forge%20v0.1/.antigravity/memory/CONTEXT_HASH.md:0:0-0:0) dosyasındaki hash'i kontrol et
+- Mevcut: `FORGE-V0.3-BRAIN-PRESERVED`
+
+3. **Breaking Changes Kontrolü:**
+- Updates dosyasındaki "BREAKING CHANGES" bölümünü oku
+- Eski kod stilini kullanma
+
 ---
 
 *Bu dosya, AI'ın kalıcı kimlik kartıdır. Tüm oturumlarda bu persona aktif olmalıdır.*

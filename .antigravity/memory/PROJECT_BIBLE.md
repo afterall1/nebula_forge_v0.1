@@ -1,7 +1,7 @@
 # 📖 PROJECT BIBLE - Nebula Forge
 
-> **Version:** 0.2  
-> **Status:** CORTEX-ACTIVATED  
+> **Version:** 0.3  
+> **Status:** CORTEX-BRAIN-PRESERVED  
 > **Last Updated:** 2025-12-27
 
 ---
@@ -85,6 +85,21 @@ Sistemin karar mekanizması ve uzmanlık seviyesi **kalıcı hafıza dosyaları*
 |-------|------|
 | `AI_PERSONA.md` | Deha Konseyi rolleri ve operasyonel protokoller |
 | `KNOWLEDGE_GRAPH.md` | Akademik literatür ↔ Kod implementasyonu eşleştirmesi |
+
+### 6.2. Memory Architecture
+
+Oturum arası context korunması için kalıcı hafıza yapısı:
+
+| Klasör/Dosya | Amaç |
+|--------------|------|
+| `memory/` | Kalıcı proje hafızası |
+| `memory/updates/` | Oturum güncellemeleri (tarih bazlı) |
+
+**Yeni Oturum Başlatma Protokolü:**
+1. Oku: [00_GOVERNANCE.md](cci:7://file:///c:/Users/PC15/Desktop/Projelerim/Nebula%20Forge%20v0.1/.antigravity/memory/00_GOVERNANCE.md:0:0-0:0)
+2. Oku: [PROJECT_BIBLE.md](cci:7://file:///c:/Users/PC15/Desktop/Projelerim/Nebula%20Forge%20v0.1/.antigravity/memory/PROJECT_BIBLE.md:0:0-0:0)
+3. Oku: `updates/` klasöründeki son dosya
+4. Hash doğrula: [CONTEXT_HASH.md](cci:7://file:///c:/Users/PC15/Desktop/Projelerim/Nebula%20Forge%20v0.1/.antigravity/memory/CONTEXT_HASH.md:0:0-0:0)
 
 **Cortex Katmanı:**
 - 🧠 **AI Persona:** 5 uzman rolü (Architect, Futures Specialist, Detective, Risk Architect, On-Chain Analyst)

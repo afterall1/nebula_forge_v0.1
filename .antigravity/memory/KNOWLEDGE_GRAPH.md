@@ -237,4 +237,14 @@ THEN "Bullish Divergence - Smart Money Accumulating"
 
 ---
 
+---
+
+## 6. SESSION UPDATES INDEX
+
+| Tarih | Dosya | Özet |
+|-------|-------|------|
+| 2025-12-27 | [updates/2025-12-27_cortex-integration.md](cci:7://file:///c:/Users/PC15/Desktop/Projelerim/Nebula%20Forge%20v0.1/.antigravity/memory/updates/2025-12-27_cortex-integration.md:0:0-0:0) | Cortex Entegrasyonu, Spot/Futures ayrımı, Yeni logic node'lar |
+
+*Yeni oturumlar bu indeksi kontrol etmeli.*
+
 *Bu dosya, sistemin bilimsel temelini ve "Neden?" sorularına verilecek referansları içerir.*
