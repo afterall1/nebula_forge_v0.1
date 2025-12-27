@@ -1,52 +1,77 @@
 /**
  * NEXUS TYPES
  * Liquidity Nebula API veri tipleri
+ * 
+ * @version 2.0 - Spot/Futures Separation Architecture
  */
 
 // ═══════════════════════════════════════════════════════════════
-// MARKET DATA
+// CORE MARKET DATA
 // ═══════════════════════════════════════════════════════════════
 
+/**
+ * Unified Market Data
+ * 
+ * Ana veri yapısı - Futures verileri birincil, Spot verileri referans
+ */
 export interface UnifiedMarketData {
     timestamp: number;
-    openTime: number;
-    closeTime: number;
 
-    // Price data
+    // ───────────────────────────────────────────────────────────────
+    // FUTURES DATA (Primary / Ana Grafik)
+    // ───────────────────────────────────────────────────────────────
     open: number;
     high: number;
     low: number;
     close: number;
-
-    // Volume
     volume: number;
-    quoteVolume: number;
 
-    // ═══════════════════════════════════════════════════════════════
-    // CORTEX METRICS (Piyasa Derinliği)
-    // ═══════════════════════════════════════════════════════════════
+    // Time boundaries (optional, for raw candle data)
+    openTime?: number;
+    closeTime?: number;
+    quoteVolume?: number;
 
-    /** Toplam açık pozisyon (Open Interest) */
-    openInterest?: number;
-
-    /** Fonlama oranı (Perpetual futures) */
-    fundingRate?: number;
-
-    /** Long/Short oranları - Trader hissiyatı */
-    longShortRatio?: {
-        accounts: number;   // Hesap bazlı oran
-        positions: number;  // Pozisyon bazlı oran
+    // ───────────────────────────────────────────────────────────────
+    // SPOT DATA (Reference / Referans)
+    // ───────────────────────────────────────────────────────────────
+    spotPrice?: {
+        open: number;
+        close: number;
+        volume: number;
     };
 
-    /** Net para girişi (Spot piyasa) */
-    netInflow?: number;
+    // ───────────────────────────────────────────────────────────────
+    // INTELLIGENCE METRICS (Cortex Layer)
+    // ───────────────────────────────────────────────────────────────
+    metrics?: {
+        /** Açık Pozisyon ($) */
+        openInterest?: number;
 
-    /** Cumulative Volume Delta - Agresif Alıcı/Satıcı farkı */
-    cvd?: number;
+        /** Fonlama Oranı (örn: 0.0001 = 0.01%) */
+        fundingRate?: number;
 
-    // ═══════════════════════════════════════════════════════════════
-    // CALCULATED FIELDS (Türetilmiş)
-    // ═══════════════════════════════════════════════════════════════
+        /** Spot Net Giriş (Exchange Inflow - Outflow) */
+        netInflow?: number;
+
+        /** Cumulative Volume Delta - Agresif Alıcı/Satıcı farkı */
+        cvd?: number;
+
+        /** Long Liquidation Volume ($) */
+        liquidationLong?: number;
+
+        /** Short Liquidation Volume ($) */
+        liquidationShort?: number;
+
+        /** Long/Short Ratio */
+        longShortRatio?: {
+            accounts: number;
+            positions: number;
+        };
+    };
+
+    // ───────────────────────────────────────────────────────────────
+    // CALCULATED FIELDS (Derived / Türetilmiş)
+    // ───────────────────────────────────────────────────────────────
 
     /** Futures - Spot fiyat farkı */
     spread?: number;
@@ -54,6 +79,43 @@ export interface UnifiedMarketData {
     /** Fiyat-metrik sapma skoru */
     divergence?: number;
 }
+
+// ═══════════════════════════════════════════════════════════════
+// LEGACY COMPATIBILITY HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Helper: Get open interest from UnifiedMarketData
+ * Supports both old flat structure and new nested structure
+ */
+export function getOpenInterest(data: UnifiedMarketData): number | undefined {
+    return data.metrics?.openInterest;
+}
+
+/**
+ * Helper: Get funding rate from UnifiedMarketData
+ */
+export function getFundingRate(data: UnifiedMarketData): number | undefined {
+    return data.metrics?.fundingRate;
+}
+
+/**
+ * Helper: Get CVD from UnifiedMarketData
+ */
+export function getCVD(data: UnifiedMarketData): number | undefined {
+    return data.metrics?.cvd;
+}
+
+/**
+ * Helper: Get net inflow from UnifiedMarketData
+ */
+export function getNetInflow(data: UnifiedMarketData): number | undefined {
+    return data.metrics?.netInflow;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CANDLE DATA (Raw Exchange Format)
+// ═══════════════════════════════════════════════════════════════
 
 export interface CandleData {
     openTime: number;
@@ -76,15 +138,15 @@ export interface CandleData {
 export interface TickerData {
     symbol: string;
     price: number;
-    priceChange: number;
-    priceChangePercent: number;
-    high24h: number;
-    low24h: number;
-    volume24h: number;
-    quoteVolume24h: number;
+    priceChange?: number;
+    priceChangePercent?: number;
+    high24h?: number;
+    low24h?: number;
+    volume24h?: number;
+    quoteVolume24h?: number;
     openInterest?: number;
     fundingRate?: number;
-    lastUpdate: number;
+    lastUpdate?: number;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -92,19 +154,16 @@ export interface TickerData {
 // ═══════════════════════════════════════════════════════════════
 
 export interface TokenMetadata {
+    id?: string;
     symbol: string;
     name: string;
     description?: string;
     logo?: string;
     website?: string;
-
-    // Market info
     marketCap?: number;
     circulatingSupply?: number;
     totalSupply?: number;
     maxSupply?: number;
-
-    // Unlock data
     vestingSchedule?: VestingEvent[];
 }
 
@@ -123,7 +182,10 @@ export type MetricType =
     | 'openInterest'
     | 'fundingRate'
     | 'longShortRatio'
-    | 'takerBuySell';
+    | 'takerBuySell'
+    | 'cvd'
+    | 'netInflow'
+    | 'liquidations';
 
 export interface MetricDataPoint {
     timestamp: number;

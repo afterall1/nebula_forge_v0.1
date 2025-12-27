@@ -162,23 +162,23 @@ export function evaluateNode(
                         break;
                     }
                     case 'oi_increase': {
-                        const prevOI = context.prevCandles[context.prevCandles.length - 1]?.openInterest || 0;
-                        const currOI = context.currentCandle.openInterest || 0;
+                        const prevOI = context.prevCandles[context.prevCandles.length - 1]?.metrics?.openInterest || 0;
+                        const currOI = context.currentCandle.metrics?.openInterest || 0;
                         passed = currOI > prevOI * 1.05;
                         outputValue = { prev: prevOI, current: currOI };
                         signalType = 'BUY';
                         break;
                     }
                     case 'funding_positive': {
-                        passed = (context.currentCandle.fundingRate || 0) > 0;
-                        outputValue = context.currentCandle.fundingRate;
+                        passed = (context.currentCandle.metrics?.fundingRate || 0) > 0;
+                        outputValue = context.currentCandle.metrics?.fundingRate;
                         signalType = 'SELL';
                         break;
                     }
                     case 'divergence': {
                         const recentCandles = context.prevCandles.slice(-5);
                         const priceIncreasing = context.currentCandle.close > (recentCandles[0]?.close || 0);
-                        const oiDecreasing = (context.currentCandle.openInterest || 0) < (recentCandles[0]?.openInterest || 0);
+                        const oiDecreasing = (context.currentCandle.metrics?.openInterest || 0) < (recentCandles[0]?.metrics?.openInterest || 0);
                         passed = priceIncreasing && oiDecreasing;
                         outputValue = { priceIncreasing, oiDecreasing };
                         signalType = 'SELL';
@@ -198,7 +198,7 @@ export function evaluateNode(
                     case 'FundingAnomaly': {
                         const prevClose = context.prevCandles[context.prevCandles.length - 1]?.close || context.currentCandle.close;
                         const priceChange = ((context.currentCandle.close - prevClose) / prevClose) * 100;
-                        const fundingRate = context.currentCandle.fundingRate || 0;
+                        const fundingRate = context.currentCandle.metrics?.fundingRate || 0;
 
                         // Price rising >1% while funding is negative = Short squeeze potential
                         passed = priceChange > 1 && fundingRate < 0;
@@ -220,12 +220,12 @@ export function evaluateNode(
                         const prevClose = context.prevCandles[context.prevCandles.length - 1]?.close || context.currentCandle.close;
                         const priceChange = Math.abs(((context.currentCandle.close - prevClose) / prevClose) * 100);
 
-                        const prevOI = context.prevCandles[context.prevCandles.length - 1]?.openInterest || 0;
-                        const currOI = context.currentCandle.openInterest || 0;
+                        const prevOI = context.prevCandles[context.prevCandles.length - 1]?.metrics?.openInterest || 0;
+                        const currOI = context.currentCandle.metrics?.openInterest || 0;
                         const oiChange = prevOI > 0 ? ((currOI - prevOI) / prevOI) * 100 : 0;
 
                         // Use CVD if available, otherwise fall back to volume spike detection
-                        const cvd = context.currentCandle.cvd || 0;
+                        const cvd = context.currentCandle.metrics?.cvd || 0;
                         const avgVolume = context.prevCandles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
                         const volumeHigh = context.currentCandle.volume > avgVolume * 1.5 || Math.abs(cvd) > 0;
 
@@ -250,7 +250,7 @@ export function evaluateNode(
                     case 'InflowDivergence': {
                         const prevClose = context.prevCandles[context.prevCandles.length - 1]?.close || context.currentCandle.close;
                         const priceChange = ((context.currentCandle.close - prevClose) / prevClose) * 100;
-                        const netInflow = context.currentCandle.netInflow || 0;
+                        const netInflow = context.currentCandle.metrics?.netInflow || 0;
 
                         // Price falling but money flowing in = Smart money accumulating
                         passed = priceChange < -0.5 && netInflow > 0;
@@ -260,6 +260,56 @@ export function evaluateNode(
                             signal: passed ? 'Bullish Divergence - Smart Money Accumulating' : 'Normal',
                         };
                         signalType = 'BUY'; // Divergence = potential reversal
+                        break;
+                    }
+
+                    /**
+                     * HIGH OPEN INTEREST LOGIC
+                     * Detects: Unusual position buildup
+                     * Condition: Current OI > 20% above 10-candle average
+                     */
+                    case 'HighOI': {
+                        const recentCandles = context.prevCandles.slice(-10);
+                        const avgOI = recentCandles.reduce((sum, c) => sum + (c.metrics?.openInterest || 0), 0) / recentCandles.length;
+                        const currentOI = context.currentCandle.metrics?.openInterest || 0;
+
+                        const oiRatio = avgOI > 0 ? (currentOI / avgOI) : 1;
+                        const oiPercentAboveAvg = (oiRatio - 1) * 100;
+
+                        // OI 20% above average = significant position buildup
+                        passed = oiRatio > 1.20;
+                        outputValue = {
+                            currentOI: currentOI.toLocaleString(),
+                            avgOI: avgOI.toLocaleString(),
+                            percentAboveAvg: oiPercentAboveAvg.toFixed(1) + '%',
+                            signal: passed ? 'High Open Interest - Position Buildup Detected' : 'Normal',
+                        };
+                        signalType = 'BUY'; // High OI in uptrend = continuation
+                        break;
+                    }
+
+                    /**
+                     * SPOT PREMIUM LOGIC
+                     * Detects: Spot market leading (spot > futures)
+                     * Condition: Spot price > Futures price by 0.5% or more
+                     */
+                    case 'SpotPremium': {
+                        const spotClose = context.currentCandle.spotPrice?.close || context.currentCandle.close;
+                        const futuresClose = context.currentCandle.close;
+
+                        const premium = spotClose - futuresClose;
+                        const premiumPercent = (premium / futuresClose) * 100;
+
+                        // Spot > Futures by 0.5% = Spot market leading
+                        passed = spotClose > futuresClose * 1.005;
+                        outputValue = {
+                            spotPrice: spotClose.toFixed(2),
+                            futuresPrice: futuresClose.toFixed(2),
+                            premium: premium.toFixed(2),
+                            premiumPercent: premiumPercent.toFixed(3) + '%',
+                            signal: passed ? 'Spot Premium - Spot Market Leading' : (premiumPercent < -0.5 ? 'Futures Premium' : 'Normal'),
+                        };
+                        signalType = 'BUY'; // Spot leading = organic demand
                         break;
                     }
 
@@ -405,6 +455,8 @@ export function getAvailableLogicTypes(): string[] {
         'FundingAnomaly',    // Short Squeeze Detection
         'Absorption',        // Accumulation/Distribution
         'InflowDivergence',  // Smart Money Flow
+        'HighOI',            // High Open Interest Detection
+        'SpotPremium',       // Spot Market Leading Detection
     ];
 }
 

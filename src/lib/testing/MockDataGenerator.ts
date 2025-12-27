@@ -114,15 +114,24 @@ function createDataPoint(params: DataPointParams): UnifiedMarketData {
         volume: totalVolume,
         quoteVolume: totalVolume * close,
 
-        // CORTEX Metrics
-        openInterest,
-        fundingRate,
-        longShortRatio: {
-            accounts: addNoise(1.0, 0.1),
-            positions: addNoise(1.0, 0.1),
+        // Spot Data (Reference)
+        spotPrice: {
+            open: addNoise(spotPrice, 0.002),
+            close: spotPrice,
+            volume: spotVolume,
         },
-        netInflow,
-        cvd,
+
+        // CORTEX Metrics (nested)
+        metrics: {
+            openInterest,
+            fundingRate,
+            netInflow,
+            cvd,
+            longShortRatio: {
+                accounts: addNoise(1.0, 0.1),
+                positions: addNoise(1.0, 0.1),
+            },
+        },
 
         // Calculated fields
         spread: futuresPrice - spotPrice,
@@ -169,10 +178,11 @@ export function generateMarketScenario(
 
 /**
  * SHORT_SQUEEZE Scenario:
- * - Price: Parabolic rise (exponential)
- * - Open Interest: Rapid decline (liquidations)
- * - Funding Rate: Extremely negative (shorts are paying)
- * - Volume: Explosion
+ * - Price: Parabolic rise (5-10% total gain)
+ * - Open Interest: Rapid decline (liquidations - drops 40-60%)
+ * - Funding Rate: Extremely negative (< -0.001, up to -0.35%)
+ * - Spread: Widening (Futures premium increases)
+ * - Volume: Explosion (up to 6x)
  */
 function generateShortSqueezeScenario(
     length: number,
@@ -182,38 +192,48 @@ function generateShortSqueezeScenario(
     const data: UnifiedMarketData[] = [];
 
     let spotPrice = config.basePrice;
-    let futuresPrice = config.basePrice * 1.001; // Slight premium
+    let futuresPrice = config.basePrice * 1.001; // Initial slight premium
     let openInterest = config.baseOI;
-    let fundingRate = -0.0005; // Start negative (-0.05%)
     let cvd = 0;
+
+    // Target: 5-10% parabolic price increase
+    const targetGain = 0.05 + Math.random() * 0.05; // 5% to 10%
 
     for (let i = 0; i < length; i++) {
         const progress = i / length; // 0 to 1
-        const timestamp = startTime + i * config.intervalMs!;
+        const timestamp = startTime + i * 3600000; // 1 hour intervals (3600000ms)
 
-        // Parabolic price increase (accelerating)
-        const priceMultiplier = 1 + (progress * progress * 0.5); // Up to 50% gain
-        spotPrice = addNoise(config.basePrice * priceMultiplier, 0.01);
-        futuresPrice = addNoise(spotPrice * (1 + progress * 0.02), 0.01); // Growing premium
+        // Parabolic price increase (accelerating curve)
+        // Formula: base * (1 + targetGain * progress^1.5) for parabolic effect
+        const priceMultiplier = 1 + (targetGain * Math.pow(progress, 1.5));
+        spotPrice = addNoise(config.basePrice * priceMultiplier, 0.005);
 
-        // OI drops as shorts get liquidated
-        openInterest = addNoise(config.baseOI * (1 - progress * 0.6), 0.02);
-        openInterest = Math.max(openInterest, config.baseOI * 0.3); // Floor at 30%
+        // Futures premium widens as squeeze intensifies
+        // Spread starts at 0.1% and grows to 2% at peak
+        const spreadPercent = 0.001 + progress * 0.019;
+        futuresPrice = addNoise(spotPrice * (1 + spreadPercent), 0.003);
 
-        // Funding goes more negative (shorts desperate)
-        fundingRate = addNoise(-0.0005 - progress * 0.003, 0.1); // Up to -0.35%
-        fundingRate = clamp(fundingRate, -0.01, 0); // Cap at -1%
+        // OI drops rapidly as shorts get liquidated (40-60% decline)
+        const oiDecline = 0.4 + Math.random() * 0.2; // 40-60%
+        openInterest = config.baseOI * (1 - oiDecline * progress);
+        openInterest = addNoise(Math.max(openInterest, config.baseOI * 0.35), 0.02);
 
-        // Volume explosion
-        const volumeMultiplier = 1 + progress * 5; // Up to 6x volume
-        const spotVolume = addNoise(config.baseVolume * volumeMultiplier * 0.3, 0.1);
-        const futuresVolume = addNoise(config.baseVolume * volumeMultiplier * 0.7, 0.1);
+        // Funding goes strongly negative (MUST be < -0.001)
+        // Starts at -0.0015 and drops to -0.0035 at peak
+        const fundingRate = -0.0015 - (progress * 0.002);
+        const noisyFunding = addNoise(fundingRate, 0.1);
+        const clampedFunding = clamp(noisyFunding, -0.005, -0.001); // Always < -0.001
 
-        // CVD strongly positive (aggressive buying)
-        cvd += addNoise(config.baseVolume * 0.3, 0.2);
+        // Volume explosion (up to 6x)
+        const volumeMultiplier = 1 + progress * 5;
+        const spotVolume = addNoise(config.baseVolume * volumeMultiplier * 0.4, 0.1);
+        const futuresVolume = addNoise(config.baseVolume * volumeMultiplier * 0.6, 0.1);
+
+        // CVD strongly positive (aggressive buying pressure)
+        cvd += addNoise(config.baseVolume * 0.4 * (1 + progress), 0.2);
 
         // Net inflow moderate positive
-        const netInflow = addNoise(config.baseVolume * 0.1 * progress, 0.3);
+        const netInflow = addNoise(config.baseVolume * 0.15 * progress, 0.3);
 
         data.push(createDataPoint({
             timestamp,
@@ -222,7 +242,7 @@ function generateShortSqueezeScenario(
             spotVolume,
             futuresVolume,
             openInterest,
-            fundingRate,
+            fundingRate: clampedFunding,
             netInflow,
             cvd,
         }));
@@ -237,10 +257,11 @@ function generateShortSqueezeScenario(
 
 /**
  * SPOT_PUMP Scenario:
- * - Price: Rising
- * - Spot Volume: Extremely high
- * - Futures Volume: Low
+ * - Price: Rising (10-20% gain)
+ * - Spot Volume: Extremely high (5x normal)
+ * - Futures Volume: Low (0.5x normal)
  * - Net Inflow: Strongly positive (whale entry)
+ * - Spot leads Futures (negative premium)
  */
 function generateSpotPumpScenario(
     length: number,
@@ -254,30 +275,38 @@ function generateSpotPumpScenario(
     let openInterest = config.baseOI;
     let cvd = 0;
 
+    // Target: 10-20% gain
+    const targetGain = 0.1 + Math.random() * 0.1;
+
     for (let i = 0; i < length; i++) {
         const progress = i / length;
-        const timestamp = startTime + i * config.intervalMs!;
+        const timestamp = startTime + i * 3600000; // 1 hour intervals
 
         // Steady price increase
-        const priceMultiplier = 1 + progress * 0.2; // Up to 20% gain
-        spotPrice = addNoise(config.basePrice * priceMultiplier, 0.01);
-        futuresPrice = addNoise(spotPrice * 0.998, 0.005); // Slight discount (spot leading)
+        const priceMultiplier = 1 + targetGain * progress;
+        spotPrice = addNoise(config.basePrice * priceMultiplier, 0.008);
 
-        // OI stays relatively flat (spot-driven)
-        openInterest = addNoise(config.baseOI * (1 + progress * 0.1), 0.02);
+        // Futures lags behind spot (negative premium / discount)
+        // Spot leading = characteristic of spot pump
+        const lagPercent = 0.002 + progress * 0.003; // 0.2% to 0.5% discount
+        futuresPrice = addNoise(spotPrice * (1 - lagPercent), 0.005);
+
+        // OI stays relatively flat (spot-driven, not leverage-driven)
+        openInterest = addNoise(config.baseOI * (1 + progress * 0.05), 0.02);
 
         // Funding stays near neutral/slightly positive
-        const fundingRate = addNoise(0.0001 + progress * 0.0001, 0.2);
+        const fundingRate = addNoise(0.0001 + progress * 0.00005, 0.3);
 
-        // Spot volume dominates
-        const spotVolume = addNoise(config.baseVolume * 3, 0.15); // 3x normal
-        const futuresVolume = addNoise(config.baseVolume * 0.5, 0.1); // Low futures
+        // Spot volume is 5x normal (KEY INDICATOR)
+        const spotVolume = addNoise(config.baseVolume * 5, 0.15);
+        // Futures volume is low (0.5x normal)
+        const futuresVolume = addNoise(config.baseVolume * 0.5, 0.1);
 
         // CVD moderately positive
-        cvd += addNoise(config.baseVolume * 0.1, 0.3);
+        cvd += addNoise(config.baseVolume * 0.15, 0.3);
 
-        // Strong net inflow (whales buying on spot)
-        const netInflow = addNoise(config.baseVolume * 0.5, 0.2);
+        // Strong net inflow (KEY INDICATOR - whales buying on spot)
+        const netInflow = addNoise(config.baseVolume * 0.8, 0.2);
 
         data.push(createDataPoint({
             timestamp,
@@ -516,12 +545,14 @@ export function generateSineWaveData(
             close,
             volume,
             quoteVolume: volume * close,
-            // CORTEX defaults
-            openInterest: addNoise(1000000000, 0.02),
-            fundingRate: addNoise(0.0001, 0.3),
-            longShortRatio: { accounts: 1, positions: 1 },
-            netInflow: 0,
-            cvd: 0,
+            // CORTEX defaults (nested)
+            metrics: {
+                openInterest: addNoise(1000000000, 0.02),
+                fundingRate: addNoise(0.0001, 0.3),
+                longShortRatio: { accounts: 1, positions: 1 },
+                netInflow: 0,
+                cvd: 0,
+            },
         });
     }
 
@@ -561,12 +592,14 @@ export function generateTrendData(
             close,
             volume: 1000 + Math.random() * 500,
             quoteVolume: 0,
-            // CORTEX defaults
-            openInterest: addNoise(1000000000, 0.02),
-            fundingRate: addNoise(0.0001, 0.3),
-            longShortRatio: { accounts: 1, positions: 1 },
-            netInflow: 0,
-            cvd: 0,
+            // CORTEX defaults (nested)
+            metrics: {
+                openInterest: addNoise(1000000000, 0.02),
+                fundingRate: addNoise(0.0001, 0.3),
+                longShortRatio: { accounts: 1, positions: 1 },
+                netInflow: 0,
+                cvd: 0,
+            },
         });
     }
 
@@ -604,12 +637,14 @@ export function generateRangeData(
             close,
             volume: 500 + Math.random() * 300,
             quoteVolume: 0,
-            // CORTEX defaults
-            openInterest: addNoise(1000000000, 0.02),
-            fundingRate: addNoise(0.0001, 0.3),
-            longShortRatio: { accounts: 1, positions: 1 },
-            netInflow: 0,
-            cvd: 0,
+            // CORTEX defaults (nested)
+            metrics: {
+                openInterest: addNoise(1000000000, 0.02),
+                fundingRate: addNoise(0.0001, 0.3),
+                longShortRatio: { accounts: 1, positions: 1 },
+                netInflow: 0,
+                cvd: 0,
+            },
         });
     }
 
@@ -642,11 +677,13 @@ export function generateRSIOverboughtData(length: number, basePrice: number): Un
             close,
             volume: 1000,
             quoteVolume: 1000 * close,
-            openInterest: 1000000000,
-            fundingRate: 0.0001,
-            longShortRatio: { accounts: 1, positions: 1 },
-            netInflow: 0,
-            cvd: 0,
+            metrics: {
+                openInterest: 1000000000,
+                fundingRate: 0.0001,
+                longShortRatio: { accounts: 1, positions: 1 },
+                netInflow: 0,
+                cvd: 0,
+            },
         });
 
         currentPrice = close;
@@ -681,11 +718,13 @@ export function generateRSIOversoldData(length: number, basePrice: number): Unif
             close,
             volume: 1000,
             quoteVolume: 1000 * close,
-            openInterest: 1000000000,
-            fundingRate: 0.0001,
-            longShortRatio: { accounts: 1, positions: 1 },
-            netInflow: 0,
-            cvd: 0,
+            metrics: {
+                openInterest: 1000000000,
+                fundingRate: 0.0001,
+                longShortRatio: { accounts: 1, positions: 1 },
+                netInflow: 0,
+                cvd: 0,
+            },
         });
 
         currentPrice = close;
