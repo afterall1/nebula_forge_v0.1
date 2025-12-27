@@ -56,6 +56,111 @@ async function nexusFetch<T>(endpoint: string, options?: RequestInit): Promise<T
 }
 
 // ═══════════════════════════════════════════════════════════════
+// PRIMARY DATA FETCH - Live Market Data via Proxy
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Fetch market data from local proxy (live data)
+ * 
+ * Uses /api/nexus/market which proxies to Liquidity Nebula API
+ * Data is returned in UnifiedMarketData[] format (Cortex compatible)
+ * 
+ * @param symbol - Trading pair (e.g., 'BTCUSDT')
+ * @param interval - Candle interval (e.g., '1h', '15m')
+ * @param limit - Number of candles to fetch (default: 100)
+ * @returns UnifiedMarketData[] with nested metrics and spotPrice
+ */
+export async function fetchMarketData(
+    symbol: string,
+    interval: string = '1h',
+    limit: number = 100
+): Promise<UnifiedMarketData[]> {
+    try {
+        const params = new URLSearchParams({
+            symbol,
+            interval,
+            limit: limit.toString(),
+        });
+
+        const response = await fetch(`/api/nexus/market?${params}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            // Live data: no cache
+            cache: 'no-store',
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('[NexusClient] Market data fetch failed:', response.status, errorData);
+
+            throw new NexusUplinkError(
+                errorData?.error || `Request failed: ${response.status}`,
+                response.status
+            );
+        }
+
+        const data = await response.json();
+
+        // Map response to UnifiedMarketData[] if needed
+        // The proxy should return data already in correct format
+        // If not, we map it here for compatibility
+        if (Array.isArray(data)) {
+            return data.map(mapToUnifiedMarketData);
+        }
+
+        // Handle wrapped response { data: [...] }
+        if (data?.data && Array.isArray(data.data)) {
+            return data.data.map(mapToUnifiedMarketData);
+        }
+
+        console.warn('[NexusClient] Unexpected response format, returning empty array');
+        return [];
+
+    } catch (error) {
+        console.error('[NexusClient] fetchMarketData error:', error);
+
+        // Return empty array on error instead of throwing
+        // This allows graceful degradation
+        return [];
+    }
+}
+
+/**
+ * Map API response to UnifiedMarketData (Cortex-compatible)
+ * Ensures metrics and spotPrice are nested correctly
+ */
+function mapToUnifiedMarketData(item: Record<string, unknown>): UnifiedMarketData {
+    return {
+        timestamp: (item.timestamp as number) || (item.openTime as number) || 0,
+        openTime: item.openTime as number | undefined,
+        closeTime: item.closeTime as number | undefined,
+        open: (item.open as number) || 0,
+        high: (item.high as number) || 0,
+        low: (item.low as number) || 0,
+        close: (item.close as number) || 0,
+        volume: (item.volume as number) || 0,
+        quoteVolume: item.quoteVolume as number | undefined,
+
+        // Spot data (nested)
+        spotPrice: item.spotPrice as UnifiedMarketData['spotPrice'],
+
+        // Metrics (nested - Cortex structure)
+        metrics: item.metrics as UnifiedMarketData['metrics'] ?? {
+            openInterest: item.openInterest as number | undefined,
+            fundingRate: item.fundingRate as number | undefined,
+            netInflow: item.netInflow as number | undefined,
+            cvd: item.cvd as number | undefined,
+        },
+
+        // Calculated fields
+        spread: item.spread as number | undefined,
+        divergence: item.divergence as number | undefined,
+    };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // API METHODS
 // ═══════════════════════════════════════════════════════════════
 

@@ -11,6 +11,11 @@ import {
     applyEdgeChanges,
 } from '@xyflow/react';
 
+// Market data imports
+import { fetchMarketData } from '@/lib/api/nexusClient';
+import { generateMarketScenario } from '@/lib/testing/MockDataGenerator';
+import type { UnifiedMarketData } from '@/lib/types/nexus';
+
 /**
  * FORGE STORE
  * 
@@ -62,6 +67,14 @@ interface ForgeState {
     isSimulating: boolean;
     analysisReport: string | null;
 
+    // ─────────────────────────────────────────────────────────────
+    // MARKET DATA STATE (Live Data Integration)
+    // ─────────────────────────────────────────────────────────────
+    marketData: UnifiedMarketData[];
+    isLoadingMarket: boolean;
+    marketError: string | null;
+    dataSource: 'live' | 'mock' | null;
+
     // React Flow Actions
     onNodesChange: OnNodesChange<ForgeNode>;
     onEdgesChange: OnEdgesChange;
@@ -76,6 +89,11 @@ interface ForgeState {
     setActiveNode: (id: string | null) => void;
     setSimulating: (status: boolean) => void;
     setAnalysisReport: (report: string | null) => void;
+
+    // ─────────────────────────────────────────────────────────────
+    // MARKET DATA ACTIONS
+    // ─────────────────────────────────────────────────────────────
+    loadMarketData: (symbol: string, interval: string, limit: number) => Promise<void>;
 
     // Utility Actions
     clearCanvas: () => void;
@@ -95,6 +113,12 @@ export const useForgeStore = create<ForgeState>((set, get) => ({
     activeNodeId: null,
     isSimulating: false,
     analysisReport: null,
+
+    // Market Data Initial State
+    marketData: [],
+    isLoadingMarket: false,
+    marketError: null,
+    dataSource: null,
 
     // ─────────────────────────────────────────────────────────────
     // React Flow Handlers
@@ -191,6 +215,60 @@ export const useForgeStore = create<ForgeState>((set, get) => ({
     setAnalysisReport: (report) => set({ analysisReport: report }),
 
     // ─────────────────────────────────────────────────────────────
+    // MARKET DATA ACTIONS
+    // ─────────────────────────────────────────────────────────────
+
+    loadMarketData: async (symbol: string, interval: string = '1h', limit: number = 500) => {
+        set({ isLoadingMarket: true, marketError: null });
+
+        try {
+            // 1. Try Live Data First
+            console.log(`[ForgeStore] Fetching live data: ${symbol} ${interval}`);
+            const liveData = await fetchMarketData(symbol, interval, limit);
+
+            if (liveData && liveData.length > 0) {
+                console.log(`[ForgeStore] ✅ Live data received: ${liveData.length} candles`);
+                set({
+                    marketData: liveData,
+                    isLoadingMarket: false,
+                    dataSource: 'live',
+                    marketError: null,
+                });
+                return;
+            }
+
+            // 2. Empty response - fall back to mock
+            throw new Error('Empty response from live API');
+
+        } catch (error) {
+            // 3. Fallback to Mock Data
+            console.warn('[ForgeStore] ⚠️ Live data failed, reverting to mock:', error);
+
+            try {
+                const mockData = generateMarketScenario('NORMAL', limit);
+                console.log(`[ForgeStore] 📦 Mock data generated: ${mockData.length} candles`);
+
+                set({
+                    marketData: mockData,
+                    isLoadingMarket: false,
+                    dataSource: 'mock',
+                    marketError: `Live data unavailable. Using mock data. (${error instanceof Error ? error.message : 'Unknown error'})`,
+                });
+
+            } catch (mockError) {
+                // 4. Total failure
+                console.error('[ForgeStore] ❌ Both live and mock data failed:', mockError);
+                set({
+                    marketData: [],
+                    isLoadingMarket: false,
+                    dataSource: null,
+                    marketError: 'Failed to load any market data',
+                });
+            }
+        }
+    },
+
+    // ─────────────────────────────────────────────────────────────
     // Utility Actions
     // ─────────────────────────────────────────────────────────────
 
@@ -203,3 +281,4 @@ export const useForgeStore = create<ForgeState>((set, get) => ({
         set({ nodes: initialNodes, edges: initialEdges });
     },
 }));
+
