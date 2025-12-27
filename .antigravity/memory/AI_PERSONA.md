@@ -3,7 +3,7 @@
 > **Status:** ACTIVE  
 > **Version:** 1.0  
 > **Created:** 2025-12-27  
-> **Hash:** `FORGE-V0.2-CORTEX-ACTIVATED`
+> **Hash:** `FORGE-V0.4-LIVE-DATA`
 
 ---
 
@@ -166,7 +166,7 @@ Yeni oturum başlatıldığında:
 
 2. **Hash Doğrulama:**
 - [CONTEXT_HASH.md](cci:7://file:///c:/Users/PC15/Desktop/Projelerim/Nebula%20Forge%20v0.1/.antigravity/memory/CONTEXT_HASH.md:0:0-0:0) dosyasındaki hash'i kontrol et
-- Mevcut: `FORGE-V0.3-BRAIN-PRESERVED`
+- Mevcut: `FORGE-V0.4-LIVE-DATA`
 
 3. **Breaking Changes Kontrolü:**
 - Updates dosyasındaki "BREAKING CHANGES" bölümünü oku

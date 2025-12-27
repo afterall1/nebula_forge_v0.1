@@ -1,8 +1,8 @@
 # 📖 PROJECT BIBLE - Nebula Forge
 
-> **Version:** 0.3  
-> **Status:** CORTEX-BRAIN-PRESERVED  
-> **Last Updated:** 2025-12-27
+> **Version:** 0.4  
+> **Status:** LIVE-DATA-INTEGRATED  
+> **Last Updated:** 2025-12-28
 
 ---
 
@@ -99,6 +99,7 @@ Oturum arası context korunması için kalıcı hafıza yapısı:
 1. Oku: [00_GOVERNANCE.md](cci:7://file:///c:/Users/PC15/Desktop/Projelerim/Nebula%20Forge%20v0.1/.antigravity/memory/00_GOVERNANCE.md:0:0-0:0)
 2. Oku: [PROJECT_BIBLE.md](cci:7://file:///c:/Users/PC15/Desktop/Projelerim/Nebula%20Forge%20v0.1/.antigravity/memory/PROJECT_BIBLE.md:0:0-0:0)
 3. Oku: `updates/` klasöründeki son dosya
+   - ⭐ [2025-12-28_live-data-integration.md](cci:7://file:///c:/Users/PC15/Desktop/Projelerim/Nebula%20Forge%20v0.1/.antigravity/memory/updates/2025-12-28_live-data-integration.md:0:0-0:0) - Live data proxy, drag-drop, metrics grid
 4. Hash doğrula: [CONTEXT_HASH.md](cci:7://file:///c:/Users/PC15/Desktop/Projelerim/Nebula%20Forge%20v0.1/.antigravity/memory/CONTEXT_HASH.md:0:0-0:0)
 
 **Cortex Katmanı:**
@@ -114,10 +115,11 @@ Oturum arası context korunması için kalıcı hafıza yapısı:
 - 2. **Backtest Engine** - Historical data simulation
 - 3. **Manipulation Detection** - Pattern recognition nodes
 - 4. **Real-time Data Feed** - Live connection to Liquidity Nebula
-+ 1. ✅ **Visual Node Editor** - React Flow with custom nodes
++ 1. ✅ **Visual Node Editor** - React Flow with custom nodes + Drag-Drop
 + 2. ✅ **Backtest Engine** - runSimulation() with NodeRegistry
 + 3. ⏳ **Manipulation Detection** - Pattern recognition (PLANNED)
-+ 4. ⏳ **Real-time Data Feed** - Mock data fallback implemented
++ 4. ✅ **Real-time Data Feed** - Live proxy + Mock fallback
++ 5. ✅ **Cortex Metrics Grid** - SQN, Sharpe, MaxDD visualization
 
 ---
 
@@ -132,6 +134,7 @@ src/ ├── app/ │ ├── page.tsx # Main layout (Palette | Editor | Sim
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/system/validate` | GET | System health check, runs test scenarios |
+| `/api/nexus/market` | GET | Secure proxy for Liquidity Nebula market data |
 
 ---
 
