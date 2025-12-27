@@ -6,6 +6,7 @@ import { useForgeStore } from '@/store';
 import { runSimulation } from '@/lib/engine';
 import { fetchDeepScan } from '@/lib/api/nexusClient';
 import { generateSineWaveData } from '@/lib/testing';
+import { generateReport } from '@/lib/services/AnalystService';
 import type { UnifiedMarketData } from '@/lib/types/nexus';
 import type { BacktestResult, TradeSignal } from '@/lib/types/backtest';
 import TimelineCanvas from './TimelineCanvas';
@@ -18,7 +19,7 @@ import TimelineCanvas from './TimelineCanvas';
  */
 
 export default function SimulationPanel() {
-    const { nodes, edges, isSimulating, setSimulating } = useForgeStore();
+    const { nodes, edges, isSimulating, setSimulating, setAnalysisReport } = useForgeStore();
 
     const [marketData, setMarketData] = useState<UnifiedMarketData[]>([]);
     const [signals, setSignals] = useState<TradeSignal[]>([]);
@@ -30,6 +31,7 @@ export default function SimulationPanel() {
         setSimulating(true);
         setError(null);
         setUsedMockData(false);
+        setAnalysisReport(null); // Clear previous report
 
         try {
             // Find source node to get symbol
@@ -65,13 +67,17 @@ export default function SimulationPanel() {
             setResult(backtestResult);
             setSignals(backtestResult.signals);
 
+            // Generate AI analysis report
+            const report = await generateReport(backtestResult, data);
+            setAnalysisReport(report);
+
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Simulation failed');
             console.error('[SimulationPanel] Error:', err);
         } finally {
             setSimulating(false);
         }
-    }, [nodes, edges, setSimulating]);
+    }, [nodes, edges, setSimulating, setAnalysisReport]);
 
     const handleStop = useCallback(() => {
         setSimulating(false);

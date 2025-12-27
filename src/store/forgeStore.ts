@@ -93,6 +93,7 @@ interface ForgeState {
     // UI State
     activeNodeId: string | null;
     isSimulating: boolean;
+    analysisReport: string | null;
 
     // React Flow Actions
     onNodesChange: OnNodesChange<ForgeNode>;
@@ -107,6 +108,7 @@ interface ForgeState {
     // UI Actions
     setActiveNode: (id: string | null) => void;
     setSimulating: (status: boolean) => void;
+    setAnalysisReport: (report: string | null) => void;
 
     // Utility Actions
     clearCanvas: () => void;
@@ -125,6 +127,7 @@ export const useForgeStore = create<ForgeState>((set, get) => ({
     edges: initialEdges,
     activeNodeId: null,
     isSimulating: false,
+    analysisReport: null,
 
     // ─────────────────────────────────────────────────────────────
     // React Flow Handlers
@@ -218,6 +221,7 @@ export const useForgeStore = create<ForgeState>((set, get) => ({
 
     setActiveNode: (id) => set({ activeNodeId: id }),
     setSimulating: (status) => set({ isSimulating: status }),
+    setAnalysisReport: (report) => set({ analysisReport: report }),
 
     // ─────────────────────────────────────────────────────────────
     // Utility Actions

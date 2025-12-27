@@ -1,6 +1,6 @@
 import { Hexagon } from 'lucide-react';
 import { ForgeEditor, NodePalette } from '@/components/Workbench';
-import { SimulationPanel } from '@/components/Simulation';
+import { SimulationPanel, AnalysisPanel } from '@/components/Simulation';
 
 export default function Home() {
     return (
@@ -13,7 +13,7 @@ export default function Home() {
                         NEBULA FORGE
                     </h1>
                     <span className="px-1.5 py-0.5 text-[10px] font-medium bg-sky-500/20 text-sky-400 rounded">
-                        v0.1
+                        v1.0
                     </span>
                 </div>
 
@@ -23,7 +23,7 @@ export default function Home() {
                 </div>
             </header>
 
-            {/* Main Content: Palette | Editor | Simulation */}
+            {/* Main Content: Palette | Editor/Simulation | Analysis */}
             <div className="flex-1 flex min-h-0">
                 {/* Left: Node Palette */}
                 <NodePalette />
@@ -40,6 +40,9 @@ export default function Home() {
                         <SimulationPanel />
                     </div>
                 </div>
+
+                {/* Right: Analysis Panel (conditional) */}
+                <AnalysisPanel />
             </div>
         </div>
     );
