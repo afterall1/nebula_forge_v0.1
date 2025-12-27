@@ -1,7 +1,7 @@
 # 📖 PROJECT BIBLE - Nebula Forge
 
-> **Version:** 0.1  
-> **Status:** GENESIS  
+> **Version:** 0.2  
+> **Status:** CORTEX-ACTIVATED  
 > **Last Updated:** 2025-12-27
 
 ---
@@ -12,7 +12,26 @@ Görsel programlama (Node-Based) ile çalışan, **kod yazmadan** backtest ve ma
 
 ---
 
-## 2. Proje Rolü
+## 2. Core Philosophy
+
+- Sistem, Lopez de Prado'nun **"Financial Machine Learning"** prensiplerine sadık kalır:
+  - ⚠️ **No Look-Ahead Bias** - Gelecek verisi asla geçmişe sızamaz
+  - 🔬 **Purged Cross-Validation** - Veri sızıntısı önlenmiş validasyon
+  - 📊 **Triple Barrier Labeling** - Objektif trade çıkış stratejileri
+
+---
+
+## 3. Team & Roles (Deha Konseyi)
+
+| Role | Specialty | Domain |
+|------|-----------|--------|
+| **Futures Market Specialist** | OI, Funding Rate, Likidite analizi | Vadeli işlem piyasa dinamikleri |
+| **Manipulation Detective** | Spoofing, Layering, Squeeze tespiti | Piyasa manipülasyon desenleri |
+| **Risk Architect** | SQN, Sharpe, Sortino, Tail-Risk | Risk metrikleri ve portföy analizi |
+
+---
+
+## 4. Proje Rolü
 
 | Attribute | Value |
 |-----------|-------|
@@ -24,7 +43,7 @@ Görsel programlama (Node-Based) ile çalışan, **kod yazmadan** backtest ve ma
 
 ---
 
-## 3. Görsel Dil ve Estetik
+## 5. Görsel Dil ve Estetik
 
 ### Design Language: **Blueprint**
 
@@ -44,7 +63,7 @@ Görsel programlama (Node-Based) ile çalışan, **kod yazmadan** backtest ve ma
 
 ---
 
-## 4. Mimari
+## 6. Mimari
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -58,9 +77,23 @@ Görsel programlama (Node-Based) ile çalışan, **kod yazmadan** backtest ve ma
 └─────────────────────────────────────────────────────────┘
 ```
 
+### 6.1. Cognitive Architecture (The Cortex)
+
+Sistemin karar mekanizması ve uzmanlık seviyesi **kalıcı hafıza dosyaları** ile korunmaktadır:
+
+| Dosya | Amaç |
+|-------|------|
+| `AI_PERSONA.md` | Deha Konseyi rolleri ve operasyonel protokoller |
+| `KNOWLEDGE_GRAPH.md` | Akademik literatür ↔ Kod implementasyonu eşleştirmesi |
+
+**Cortex Katmanı:**
+- 🧠 **AI Persona:** 5 uzman rolü (Architect, Futures Specialist, Detective, Risk Architect, On-Chain Analyst)
+- 📚 **Knowledge Graph:** Bilimsel referanslar ve kod implementasyonları arasındaki bağlantı haritası
+- ⚙️ **Operational Mode:** Defensive Programming, Type Safety, Edge Case Handling
+
 ---
 
-## 5. Core Capabilities 
+## 7. Core Capabilities 
 
 - 1. **Visual Node Editor** - Drag & drop strategy builder
 - 2. **Backtest Engine** - Historical data simulation
@@ -73,13 +106,13 @@ Görsel programlama (Node-Based) ile çalışan, **kod yazmadan** backtest ve ma
 
 ---
 
-## 6. File Structure
+## 8. File Structure
 
 src/ ├── app/ │ ├── page.tsx # Main layout (Palette | Editor | Simulation) │ └── api/system/validate/ # Health check API ├── components/ │ ├── Workbench/ │ │ ├── ForgeEditor.tsx # React Flow canvas │ │ ├── NodePalette.tsx # Node creation toolbar │ │ └── Nodes/ # Custom node components │ └── Simulation/ │ ├── SimulationPanel.tsx # Backtest runner UI │ └── TimelineCanvas.tsx # PixiJS chart ├── lib/ │ ├── engine/ │ │ ├── BacktestEngine.ts # Core simulation logic │ │ └── NodeRegistry.ts # Node type evaluators │ ├── testing/ # Mock data & test runner │ └── api/nexusClient.ts # Liquidity Nebula client └── store/ └── forgeStore.ts # Zustand state management
 
 ---
 
-## 7. API Endpoints
+## 9. API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -87,7 +120,7 @@ src/ ├── app/ │ ├── page.tsx # Main layout (Palette | Editor | Sim
 
 ---
 
-## 8. GitHub
+## 10. GitHub
 
 - **Repository:** https://github.com/afterall1/nebula_forge_v0.1
 - **Branch:** master

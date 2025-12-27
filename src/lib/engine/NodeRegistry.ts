@@ -184,6 +184,85 @@ export function evaluateNode(
                         signalType = 'SELL';
                         break;
                     }
+
+                    // ═══════════════════════════════════════════════════════════════
+                    // CORTEX LOGIC NODES (Academic Research Based)
+                    // Ref: Van Tharp Market Regimes, LuxAlgo, Lopez de Prado
+                    // ═══════════════════════════════════════════════════════════════
+
+                    /**
+                     * FUNDING SQUEEZE LOGIC
+                     * Detects: Spot Driven Rally / Short Squeeze Warning
+                     * Condition: Price UP (>1%) AND Funding Rate NEGATIVE
+                     */
+                    case 'FundingAnomaly': {
+                        const prevClose = context.prevCandles[context.prevCandles.length - 1]?.close || context.currentCandle.close;
+                        const priceChange = ((context.currentCandle.close - prevClose) / prevClose) * 100;
+                        const fundingRate = context.currentCandle.fundingRate || 0;
+
+                        // Price rising >1% while funding is negative = Short squeeze potential
+                        passed = priceChange > 1 && fundingRate < 0;
+                        outputValue = {
+                            priceChange: priceChange.toFixed(2) + '%',
+                            fundingRate: fundingRate.toFixed(4),
+                            signal: passed ? 'Spot Driven Rally / Short Squeeze Warning' : 'Normal',
+                        };
+                        signalType = 'BUY'; // Squeeze = Bullish momentum
+                        break;
+                    }
+
+                    /**
+                     * ABSORPTION LOGIC
+                     * Detects: Accumulation/Distribution (Smart Money Loading)
+                     * Condition: Price FLAT (<0.2%) AND OI UP (>2%) AND High Volume/CVD
+                     */
+                    case 'Absorption': {
+                        const prevClose = context.prevCandles[context.prevCandles.length - 1]?.close || context.currentCandle.close;
+                        const priceChange = Math.abs(((context.currentCandle.close - prevClose) / prevClose) * 100);
+
+                        const prevOI = context.prevCandles[context.prevCandles.length - 1]?.openInterest || 0;
+                        const currOI = context.currentCandle.openInterest || 0;
+                        const oiChange = prevOI > 0 ? ((currOI - prevOI) / prevOI) * 100 : 0;
+
+                        // Use CVD if available, otherwise fall back to volume spike detection
+                        const cvd = context.currentCandle.cvd || 0;
+                        const avgVolume = context.prevCandles.slice(-20).reduce((s, c) => s + c.volume, 0) / 20;
+                        const volumeHigh = context.currentCandle.volume > avgVolume * 1.5 || Math.abs(cvd) > 0;
+
+                        // Flat price + OI increase + High activity = Position loading
+                        passed = priceChange < 0.2 && oiChange > 2 && volumeHigh;
+                        outputValue = {
+                            priceChange: priceChange.toFixed(3) + '%',
+                            oiChange: oiChange.toFixed(2) + '%',
+                            volumeRatio: (context.currentCandle.volume / avgVolume).toFixed(2),
+                            cvd: cvd,
+                            signal: passed ? 'Positions being loaded (Accumulation/Distribution)' : 'Normal',
+                        };
+                        signalType = 'BUY'; // Accumulation is typically bullish
+                        break;
+                    }
+
+                    /**
+                     * SMART MONEY FLOW LOGIC
+                     * Detects: Bullish Divergence (Whales buying the dip)
+                     * Condition: Price DOWN but Net Inflow POSITIVE
+                     */
+                    case 'InflowDivergence': {
+                        const prevClose = context.prevCandles[context.prevCandles.length - 1]?.close || context.currentCandle.close;
+                        const priceChange = ((context.currentCandle.close - prevClose) / prevClose) * 100;
+                        const netInflow = context.currentCandle.netInflow || 0;
+
+                        // Price falling but money flowing in = Smart money accumulating
+                        passed = priceChange < -0.5 && netInflow > 0;
+                        outputValue = {
+                            priceChange: priceChange.toFixed(2) + '%',
+                            netInflow: netInflow,
+                            signal: passed ? 'Bullish Divergence - Smart Money Accumulating' : 'Normal',
+                        };
+                        signalType = 'BUY'; // Divergence = potential reversal
+                        break;
+                    }
+
                     default: {
                         // Custom comparison: "price > 50000" style
                         const operator = data.operator as string || '>';
@@ -204,6 +283,66 @@ export function evaluateNode(
                         price: context.currentCandle.close,
                         reason: logic,
                     } : undefined,
+                };
+            }
+
+            // ─────────────────────────────────────────────────────────
+            // FILTER NODE - Van Tharp Regime Detection
+            // ─────────────────────────────────────────────────────────
+            case 'filterNode':
+            case 'filter': {
+                const filterType = data.logic as string || 'RegimeCheck';
+                const allCandles = [...context.prevCandles, context.currentCandle];
+
+                let passed = false;
+                let outputValue: unknown = null;
+
+                switch (filterType) {
+                    /**
+                     * VOLATILITY REGIME CHECK
+                     * Van Tharp's Market Regimes Theory
+                     * Uses ATR (Average True Range) to determine volatility state
+                     */
+                    case 'RegimeCheck': {
+                        // Calculate ATR-like metric (simplified: average of high-low)
+                        const atrPeriod = 14;
+                        const recentCandles = allCandles.slice(-atrPeriod);
+
+                        const trueRanges = recentCandles.map(c => c.high - c.low);
+                        const atr = trueRanges.reduce((a, b) => a + b, 0) / trueRanges.length;
+
+                        // Normalize ATR as percentage of current price
+                        const atrPercent = (atr / context.currentCandle.close) * 100;
+
+                        // Threshold: >2% = High Volatility, <1% = Low Volatility
+                        const regime = atrPercent > 2 ? 'HIGH_VOLATILITY' :
+                            atrPercent < 1 ? 'LOW_VOLATILITY' : 'NORMAL';
+
+                        // Pass filter if in high volatility (more opportunities)
+                        passed = regime === 'HIGH_VOLATILITY';
+
+                        outputValue = {
+                            atr: atr.toFixed(2),
+                            atrPercent: atrPercent.toFixed(2) + '%',
+                            regime: regime,
+                            recommendation: regime === 'HIGH_VOLATILITY'
+                                ? 'Wide stops, momentum strategies'
+                                : regime === 'LOW_VOLATILITY'
+                                    ? 'Tight stops, mean reversion'
+                                    : 'Standard parameters',
+                        };
+                        break;
+                    }
+
+                    default: {
+                        passed = true;
+                        outputValue = { filter: filterType, status: 'unrecognized' };
+                    }
+                }
+
+                return {
+                    value: outputValue,
+                    passed,
                 };
             }
 
@@ -250,13 +389,30 @@ export function evaluateNode(
  */
 export function getAvailableLogicTypes(): string[] {
     return [
+        // Classic indicators
         'rsi_gt_70',
         'rsi_lt_30',
         'price_gt_ma200',
         'price_lt_ma200',
         'volume_spike',
+
+        // Futures metrics
         'oi_increase',
         'funding_positive',
         'divergence',
+
+        // CORTEX: Advanced Academic-Based Logic
+        'FundingAnomaly',    // Short Squeeze Detection
+        'Absorption',        // Accumulation/Distribution
+        'InflowDivergence',  // Smart Money Flow
+    ];
+}
+
+/**
+ * Get available filter types for FilterNode
+ */
+export function getAvailableFilterTypes(): string[] {
+    return [
+        'RegimeCheck',  // Van Tharp Volatility Regime
     ];
 }

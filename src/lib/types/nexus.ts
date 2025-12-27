@@ -22,13 +22,36 @@ export interface UnifiedMarketData {
     volume: number;
     quoteVolume: number;
 
-    // Metrics (optional, from deep-scan)
-    openInterest?: number;
-    fundingRate?: number;
-    longShortRatio?: number;
+    // ═══════════════════════════════════════════════════════════════
+    // CORTEX METRICS (Piyasa Derinliği)
+    // ═══════════════════════════════════════════════════════════════
 
-    // Calculated fields
+    /** Toplam açık pozisyon (Open Interest) */
+    openInterest?: number;
+
+    /** Fonlama oranı (Perpetual futures) */
+    fundingRate?: number;
+
+    /** Long/Short oranları - Trader hissiyatı */
+    longShortRatio?: {
+        accounts: number;   // Hesap bazlı oran
+        positions: number;  // Pozisyon bazlı oran
+    };
+
+    /** Net para girişi (Spot piyasa) */
+    netInflow?: number;
+
+    /** Cumulative Volume Delta - Agresif Alıcı/Satıcı farkı */
+    cvd?: number;
+
+    // ═══════════════════════════════════════════════════════════════
+    // CALCULATED FIELDS (Türetilmiş)
+    // ═══════════════════════════════════════════════════════════════
+
+    /** Futures - Spot fiyat farkı */
     spread?: number;
+
+    /** Fiyat-metrik sapma skoru */
     divergence?: number;
 }
 

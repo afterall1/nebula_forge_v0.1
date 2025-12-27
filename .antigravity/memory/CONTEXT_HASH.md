@@ -8,17 +8,12 @@
 
 | Field | Value |
 |-------|-------|
-| **Hash** | `FORGE-V0.1-GENESIS` |
-- | **Status** | SYSTEM INITIALIZATION |
-+ | **Status** | PROTOTYPE ACTIVE |
+| **Hash** | `FORGE-V0.3-BRAIN-PRESERVED` |
+| **Status** | CORTEX LAYER SEALED |
 | **Created** | 2025-12-27 |
-- | **Last Sync** | 2025-12-27T20:16:36+03:00 |
-+ | **Last Sync** | 2025-12-27T21:16:00+03:00 |
+| **Last Sync** | 2025-12-27T23:00:00+03:00 |
 
----
-
-## State History
-
+> 📝 **Note:** AI Persona ve Knowledge Graph dosyaları oluşturuldu. 'Cortex' katmanı kalıcı hafızaya işlendi.
 
 ---
 
@@ -26,6 +21,8 @@
 
 ```
 [2025-12-27] FORGE-V0.1-GENESIS → SYSTEM INITIALIZATION
+[2025-12-27] FORGE-V0.2-CORTEX-ACTIVATED → Cortex Entegrasyonu
+[2025-12-27] FORGE-V0.3-BRAIN-PRESERVED → AI Persona & Knowledge Graph Sealed
 ```
 
 ---
@@ -33,10 +30,23 @@
 ## Verification
 
 ```
-SHA: FORGE-V0.1-GENESIS
-SIG: NEBULA_FORGE_INIT
-VER: 0.1.0
+SHA: FORGE-V0.3-BRAIN-PRESERVED
+SIG: NEBULA_FORGE_CORTEX_SEALED
+VER: 0.3.0
 ```
+
+---
+
+## Memory Files
+
+| Dosya | Durum | Açıklama |
+|-------|-------|----------|
+| `00_GOVERNANCE.md` | 🔒 LOCKED | Temel kurallar |
+| `PROJECT_BIBLE.md` | ✅ ACTIVE | Proje anayasası |
+| `TECH_STACK_LOCK.md` | 🔒 LOCKED | Teknoloji kısıtlamaları |
+| `AI_PERSONA.md` | ✅ ACTIVE | Deha Konseyi rolleri |
+| `KNOWLEDGE_GRAPH.md` | ✅ ACTIVE | Akademik referans haritası |
+| `CONTEXT_HASH.md` | ✅ ACTIVE | Oturum senkronizasyonu |
 
 ---
 

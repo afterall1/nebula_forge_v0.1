@@ -92,6 +92,101 @@ function getInputNodeIds(nodeId: string, edges: Edge[]): string[] {
 // METRICS CALCULATION
 // ═══════════════════════════════════════════════════════════════
 
+/**
+ * Calculate standard deviation of an array of numbers
+ */
+function calculateStdDev(values: number[]): number {
+    if (values.length < 2) return 0;
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    const squaredDiffs = values.map(v => Math.pow(v - mean, 2));
+    const variance = squaredDiffs.reduce((a, b) => a + b, 0) / (values.length - 1);
+    return Math.sqrt(variance);
+}
+
+/**
+ * Calculate SQN (System Quality Number) - Van Tharp Method
+ * Formula: (Avg Profit / StdDev of Profits) * sqrt(Trade Count)
+ */
+function calculateSQN(tradePnLs: number[]): number {
+    if (tradePnLs.length < 2) return 0;
+
+    const avgProfit = tradePnLs.reduce((a, b) => a + b, 0) / tradePnLs.length;
+    const stdDev = calculateStdDev(tradePnLs);
+
+    if (stdDev === 0) return 0;
+
+    return (avgProfit / stdDev) * Math.sqrt(tradePnLs.length);
+}
+
+/**
+ * Calculate Sharpe Ratio (Simplified, Risk-Free Rate = 0)
+ * Formula: Avg Daily Return / StdDev of Daily Returns
+ */
+function calculateSharpeRatio(equityCurve: EquityPoint[]): number {
+    if (equityCurve.length < 2) return 0;
+
+    // Calculate daily returns
+    const dailyReturns: number[] = [];
+    for (let i = 1; i < equityCurve.length; i++) {
+        const prevEquity = equityCurve[i - 1].equity;
+        const currEquity = equityCurve[i].equity;
+        if (prevEquity > 0) {
+            dailyReturns.push((currEquity - prevEquity) / prevEquity);
+        }
+    }
+
+    if (dailyReturns.length < 2) return 0;
+
+    const avgReturn = dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length;
+    const stdDev = calculateStdDev(dailyReturns);
+
+    if (stdDev === 0) return avgReturn > 0 ? Infinity : 0;
+
+    // Annualized: multiply by sqrt(252) for daily data
+    // For simplicity, we return the raw ratio
+    return avgReturn / stdDev;
+}
+
+/**
+ * Calculate Maximum Drawdown (%)
+ * Peak to trough decline in equity curve
+ */
+function calculateMaxDrawdown(equityCurve: EquityPoint[]): number {
+    if (equityCurve.length < 2) return 0;
+
+    let peak = equityCurve[0].equity;
+    let maxDrawdown = 0;
+
+    for (const point of equityCurve) {
+        if (point.equity > peak) {
+            peak = point.equity;
+        }
+
+        const drawdown = peak > 0 ? ((peak - point.equity) / peak) * 100 : 0;
+        if (drawdown > maxDrawdown) {
+            maxDrawdown = drawdown;
+        }
+    }
+
+    return maxDrawdown;
+}
+
+/**
+ * Calculate Profit Factor
+ * Formula: Gross Profits / Gross Losses
+ */
+function calculateProfitFactor(tradePnLs: number[]): number {
+    const grossProfit = tradePnLs.filter(p => p > 0).reduce((a, b) => a + b, 0);
+    const grossLoss = Math.abs(tradePnLs.filter(p => p < 0).reduce((a, b) => a + b, 0));
+
+    if (grossLoss === 0) return grossProfit > 0 ? Infinity : 0;
+
+    return grossProfit / grossLoss;
+}
+
+/**
+ * Calculate all backtest metrics
+ */
 function calculateMetrics(
     signals: TradeSignal[],
     equityCurve: EquityPoint[],
@@ -99,15 +194,23 @@ function calculateMetrics(
 ): BacktestMetrics {
     const tradeCount = signals.length;
 
+    // Default metrics for insufficient data
+    const defaultMetrics: BacktestMetrics = {
+        winRate: 0,
+        totalReturn: 0,
+        tradeCount,
+        sqn: 0,
+        sharpeRatio: 0,
+        maxDrawdown: 0,
+        profitFactor: 0,
+    };
+
     if (tradeCount < 2) {
-        return {
-            winRate: 0,
-            totalReturn: 0,
-            tradeCount,
-        };
+        return defaultMetrics;
     }
 
-    // Calculate win rate from trade pairs
+    // Calculate trade P&Ls and win rate
+    const tradePnLs: number[] = [];
     let wins = 0;
     let totalPairs = 0;
 
@@ -119,10 +222,12 @@ function calculateMetrics(
         const pnl =
             entry.type === 'BUY' ? exit.price - entry.price : entry.price - exit.price;
 
+        tradePnLs.push(pnl);
         if (pnl > 0) wins++;
         totalPairs++;
     }
 
+    // Calculate total return
     const finalEquity = equityCurve[equityCurve.length - 1]?.equity || initialCapital;
     const totalReturn = ((finalEquity - initialCapital) / initialCapital) * 100;
 
@@ -130,6 +235,10 @@ function calculateMetrics(
         winRate: totalPairs > 0 ? (wins / totalPairs) * 100 : 0,
         totalReturn,
         tradeCount,
+        sqn: calculateSQN(tradePnLs),
+        sharpeRatio: calculateSharpeRatio(equityCurve),
+        maxDrawdown: calculateMaxDrawdown(equityCurve),
+        profitFactor: calculateProfitFactor(tradePnLs),
     };
 }
 
@@ -159,7 +268,7 @@ export function runSimulation(
             return {
                 signals: [],
                 equityCurve: [{ time: Date.now(), equity: config.initialCapital }],
-                metrics: { winRate: 0, totalReturn: 0, tradeCount: 0 },
+                metrics: { winRate: 0, totalReturn: 0, tradeCount: 0, sqn: 0, sharpeRatio: 0, maxDrawdown: 0, profitFactor: 0 },
             };
         }
 
@@ -171,7 +280,7 @@ export function runSimulation(
             return {
                 signals: [],
                 equityCurve: [{ time: Date.now(), equity: config.initialCapital }],
-                metrics: { winRate: 0, totalReturn: 0, tradeCount: 0 },
+                metrics: { winRate: 0, totalReturn: 0, tradeCount: 0, sqn: 0, sharpeRatio: 0, maxDrawdown: 0, profitFactor: 0 },
             };
         }
 
@@ -281,7 +390,7 @@ export function runSimulation(
         return {
             signals: [],
             equityCurve: [{ time: Date.now(), equity: config.initialCapital }],
-            metrics: { winRate: 0, totalReturn: 0, tradeCount: 0 },
+            metrics: { winRate: 0, totalReturn: 0, tradeCount: 0, sqn: 0, sharpeRatio: 0, maxDrawdown: 0, profitFactor: 0 },
         };
     }
 }

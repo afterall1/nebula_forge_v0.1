@@ -34,9 +34,43 @@ export interface EquityPoint {
 // ═══════════════════════════════════════════════════════════════
 
 export interface BacktestMetrics {
+    // Basic metrics
     winRate: number;
     totalReturn: number;
     tradeCount: number;
+
+    // ═══════════════════════════════════════════════════════════════
+    // CORTEX: Professional Risk Metrics
+    // Ref: Van Tharp SQN, TraderSync, Lopez de Prado
+    // ═══════════════════════════════════════════════════════════════
+
+    /** 
+     * System Quality Number (Van Tharp)
+     * Formula: (Avg Profit / StdDev of Profits) * sqrt(Trade Count)
+     * Interpretation: <1.6 Poor, 1.6-2.0 Average, 2.0-2.5 Good, 2.5-3.0 Excellent, >3.0 Superb
+     */
+    sqn: number;
+
+    /**
+     * Sharpe Ratio (Simplified, Risk-Free Rate = 0)
+     * Formula: Avg Daily Return / StdDev of Daily Returns
+     * Interpretation: <1 Sub-optimal, 1-2 Good, 2-3 Very Good, >3 Excellent
+     */
+    sharpeRatio: number;
+
+    /**
+     * Maximum Drawdown (%)
+     * Peak to trough decline in equity curve
+     * Lower is better; >30% typically unacceptable
+     */
+    maxDrawdown: number;
+
+    /**
+     * Profit Factor
+     * Formula: Gross Profits / Gross Losses
+     * Interpretation: <1 Losing, 1-1.5 Marginal, 1.5-2.0 Good, >2.0 Excellent
+     */
+    profitFactor: number;
 }
 
 export interface BacktestResult {
