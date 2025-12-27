@@ -155,7 +155,6 @@ function RenderLine({ line }: { line: string }) {
     // H2 Header
     if (line.startsWith('## ')) {
         const text = line.slice(3);
-        const hasEmoji = /^[📊🔍⚖️⚠️✅❌]/.test(text);
         return (
             <h2 className="text-emerald-400 font-bold text-sm mt-4 mb-2 flex items-center gap-2">
                 {text}
