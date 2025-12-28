@@ -214,3 +214,42 @@ export interface DeepScanResponse {
         endTime: number;
     };
 }
+
+// ═══════════════════════════════════════════════════════════════
+// LIVE DATA EXTENSIONS
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Data source mode indicator
+ * MOCK: Generated test data (fallback)
+ * LIVE: Real-time exchange data
+ */
+export type DataSourceMode = 'MOCK' | 'LIVE';
+
+/**
+ * Real-time ticker update
+ */
+export interface MarketTicker {
+    symbol: string;
+    price: number;
+    time: number;
+    volume?: number;
+}
+
+/**
+ * Generic streaming message wrapper
+ */
+export interface StreamMessage<T = unknown> {
+    type: 'TICKER' | 'CANDLE' | 'ERROR' | 'STATUS';
+    payload: T;
+    timestamp: number;
+}
+
+/**
+ * Exchange adapter configuration
+ */
+export interface ExchangeAdapterConfig {
+    endpoint: string;
+    interval: string; // '1m', '1h', etc.
+    limit?: number;
+}

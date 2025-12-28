@@ -9,7 +9,8 @@ import type {
     UnifiedMarketData,
     MetricDataPoint,
     DeepScanResponse,
-    NexusResponse
+    NexusResponse,
+    MarketTicker,
 } from '@/lib/types/nexus';
 
 // ═══════════════════════════════════════════════════════════════
@@ -293,6 +294,75 @@ export async function checkNexusHealth(): Promise<boolean> {
     } catch {
         return false;
     }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LIVE STREAM CONNECTION (SSE)
+// ═══════════════════════════════════════════════════════════════
+
+// Module-level EventSource reference for stream management
+let eventSource: EventSource | null = null;
+
+/**
+ * Connect to live data stream (SSE)
+ * 
+ * @param symbol - Trading pair (e.g., 'BTCUSDT')
+ * @param onData - Callback for ticker updates
+ * @returns Cleanup function to disconnect
+ */
+export function connectToStream(
+    symbol: string,
+    onData: (data: MarketTicker) => void
+): () => void {
+    // Close existing connection if any
+    if (eventSource) {
+        eventSource.close();
+    }
+
+    // Connect to proxy SSE endpoint
+    eventSource = new EventSource(`/api/nexus/stream?symbol=${symbol}`);
+
+    eventSource.onmessage = (event) => {
+        try {
+            const parsed = JSON.parse(event.data);
+            if (parsed.type === 'TICKER') {
+                onData(parsed.payload as MarketTicker);
+            } else if (parsed.type === 'STATUS') {
+                console.log('[NexusClient] Stream status:', parsed.payload);
+            } else if (parsed.type === 'ERROR') {
+                console.error('[NexusClient] Stream error:', parsed.payload);
+            }
+        } catch (e) {
+            console.error('[NexusClient] Stream parse error:', e);
+        }
+    };
+
+    eventSource.onerror = (err) => {
+        console.error('[NexusClient] Stream connection error:', err);
+        eventSource?.close();
+        eventSource = null;
+    };
+
+    // Return cleanup function
+    return () => disconnectStream();
+}
+
+/**
+ * Disconnect from live data stream
+ */
+export function disconnectStream(): void {
+    if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+        console.log('[NexusClient] Stream disconnected');
+    }
+}
+
+/**
+ * Check if stream is currently connected
+ */
+export function isStreamConnected(): boolean {
+    return eventSource !== null && eventSource.readyState === EventSource.OPEN;
 }
 
 // ═══════════════════════════════════════════════════════════════
