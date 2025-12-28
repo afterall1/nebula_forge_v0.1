@@ -75,6 +75,12 @@ interface ForgeState {
     marketError: string | null;
     dataSource: 'live' | 'mock' | null;
 
+    // ─────────────────────────────────────────────────────────────
+    // LIVE STREAMING STATE
+    // ─────────────────────────────────────────────────────────────
+    isLiveMode: boolean;
+    activeSymbol: string;
+
     // React Flow Actions
     onNodesChange: OnNodesChange<ForgeNode>;
     onEdgesChange: OnEdgesChange;
@@ -94,6 +100,12 @@ interface ForgeState {
     // MARKET DATA ACTIONS
     // ─────────────────────────────────────────────────────────────
     loadMarketData: (symbol: string, interval: string, limit: number) => Promise<void>;
+
+    // ─────────────────────────────────────────────────────────────
+    // LIVE STREAMING ACTIONS
+    // ─────────────────────────────────────────────────────────────
+    setLiveMode: (isLive: boolean) => void;
+    updateLatestCandle: (price: number) => void;
 
     // Utility Actions
     clearCanvas: () => void;
@@ -119,6 +131,10 @@ export const useForgeStore = create<ForgeState>((set, get) => ({
     isLoadingMarket: false,
     marketError: null,
     dataSource: null,
+
+    // Live Streaming Initial State
+    isLiveMode: false,
+    activeSymbol: 'BTCUSDT',
 
     // ─────────────────────────────────────────────────────────────
     // React Flow Handlers
@@ -267,6 +283,19 @@ export const useForgeStore = create<ForgeState>((set, get) => ({
             }
         }
     },
+
+    // ─────────────────────────────────────────────────────────────
+    // LIVE STREAMING ACTIONS
+    // ─────────────────────────────────────────────────────────────
+
+    setLiveMode: (isLive) => set({ isLiveMode: isLive }),
+
+    updateLatestCandle: (price) => set((state) => {
+        // POC: Log live tick to console
+        // Future: Update latest candle in marketData array
+        console.log(`[LIVE TICK] ${state.activeSymbol}: $${price.toFixed(2)}`);
+        return {};
+    }),
 
     // ─────────────────────────────────────────────────────────────
     // Utility Actions

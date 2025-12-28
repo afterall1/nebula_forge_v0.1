@@ -1,14 +1,17 @@
 'use client';
 
-import { memo, useState } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { Database } from 'lucide-react';
+import { Database, Radio } from 'lucide-react';
+import { useForgeStore } from '@/store/forgeStore';
+import { connectToStream, disconnectStream } from '@/lib/api/nexusClient';
 
 /**
  * SOURCE NODE - Veri Kaynağı
  * 
  * Market data seçimi için başlangıç düğümü
  * Giriş: Yok | Çıkış: Sağ
+ * Live Mode: SSE üzerinden canlı veri akışı
  */
 
 const AVAILABLE_SYMBOLS = [
@@ -30,6 +33,32 @@ interface SourceNodeData {
 function SourceNode({ data, selected }: NodeProps) {
     const nodeData = data as SourceNodeData;
     const [symbol, setSymbol] = useState(nodeData.symbol || 'BTCUSDT');
+
+    // Store integration for live mode
+    const { isLiveMode, setLiveMode, updateLatestCandle } = useForgeStore();
+
+    // Effect: Manage stream connection based on live mode
+    useEffect(() => {
+        if (isLiveMode) {
+            console.log('🔌 Connecting to Live Stream:', symbol);
+
+            const cleanup = connectToStream(symbol, (ticker) => {
+                if (ticker.price) {
+                    updateLatestCandle(ticker.price);
+                }
+            });
+
+            return cleanup;
+        } else {
+            console.log('💤 Disconnecting Stream (Mock Mode)');
+            disconnectStream();
+        }
+    }, [isLiveMode, symbol, updateLatestCandle]);
+
+    // Toggle handler
+    const handleToggleLiveMode = () => {
+        setLiveMode(!isLiveMode);
+    };
 
     return (
         <div
@@ -64,8 +93,31 @@ function SourceNode({ data, selected }: NodeProps) {
                     ))}
                 </select>
 
+                {/* Live Mode Toggle */}
+                <div
+                    onClick={handleToggleLiveMode}
+                    className="mt-3 flex items-center justify-between gap-2 p-2 bg-black/30 rounded-lg cursor-pointer
+                               hover:bg-black/40 transition-colors border border-slate-700/50"
+                >
+                    <div className="flex items-center gap-2">
+                        <span
+                            className={`w-2 h-2 rounded-full ${isLiveMode
+                                    ? 'bg-green-500 animate-pulse shadow-lg shadow-green-500/50'
+                                    : 'bg-yellow-500'
+                                }`}
+                        />
+                        <span className="text-xs font-mono text-gray-300">
+                            {isLiveMode ? 'LIVE' : 'MOCK'}
+                        </span>
+                    </div>
+                    <Radio
+                        className={`w-3.5 h-3.5 ${isLiveMode ? 'text-green-400' : 'text-yellow-500'
+                            }`}
+                    />
+                </div>
+
                 <div className="mt-2 text-xs text-slate-500 text-center">
-                    Real-time price feed
+                    {isLiveMode ? 'Binance Live Feed' : 'Mock Data Mode'}
                 </div>
             </div>
 
@@ -80,3 +132,4 @@ function SourceNode({ data, selected }: NodeProps) {
 }
 
 export default memo(SourceNode);
+
